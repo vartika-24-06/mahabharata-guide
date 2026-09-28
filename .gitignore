@@ -17,3 +17,7 @@ node_modules/
 dist/
 build/
 .next/
+
+# Downloaded source text and built index (kept out of git per answering-engine design)
+data_raw/
+data_processed/
