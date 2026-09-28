@@ -1,0 +1,4 @@
+- Deferred to v2: modern-dilemma classifier (plants, overeating). Reason: fuzzy classification needing its own validated eval set.
+- Dropped Groq-only BYOK for OpenAI + Anthropic + Gemini. Reason: audience has paid keys; free-tier rate limits risk a broken demo.
+- Key gate is lazy (at first request), not up front. Reason: don't ask for a paid key before showing value.
+- Specs authored in Kiro; implementation in Antigravity. Reason: Kiro free credits limited.
