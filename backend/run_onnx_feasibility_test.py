@@ -68,30 +68,25 @@ def predict_rerank_onnx(model, tokenizer, question: str, passages: list[str]) ->
     outputs = model(**inputs)
     return outputs.logits.squeeze(-1).detach().numpy()
 
-def run_onnx_benchmark(num_runs: int = 5):
-    print("--- Starting ONNX Runtime + INT8 Quantization Feasibility Test ---")
+def run_embedding_only_benchmark(num_runs: int = 5):
+    print("--- Starting Embedding Model Only (ONNX + INT8) Feasibility Test ---")
     export_and_quantize_models()
 
     mem_before_load = get_process_memory_mb()
     print(f"Memory before model loading: {mem_before_load:.2f} MB")
 
-    print("Loading quantized ONNX embedding model...")
+    print("Loading quantized ONNX embedding model ONLY...")
     embed_tokenizer = AutoTokenizer.from_pretrained(EMBED_QUANT_PATH)
     embed_model = ORTModelForFeatureExtraction.from_pretrained(EMBED_QUANT_PATH, file_name="model_quantized.onnx")
 
-    print("Loading quantized ONNX re-ranker model...")
-    rerank_tokenizer = AutoTokenizer.from_pretrained(RERANK_QUANT_PATH)
-    rerank_model = ORTModelForSequenceClassification.from_pretrained(RERANK_QUANT_PATH, file_name="model_quantized.onnx")
-
     idle_memory_mb = get_process_memory_mb()
     peak_memory_mb = idle_memory_mb
-    print(f"Idle memory (ONNX INT8 models loaded): {idle_memory_mb:.2f} MB")
+    print(f"Idle memory (ONLY ONNX INT8 embedding model loaded): {idle_memory_mb:.2f} MB")
 
     timings_a = []
     timings_b = []
-    timings_c = []
 
-    print(f"\nRunning ONNX benchmark ({num_runs} runs)...")
+    print(f"\nRunning embedding-only benchmark ({num_runs} runs)...")
     for _ in range(num_runs):
         peak_memory_mb = max(peak_memory_mb, get_process_memory_mb())
 
@@ -113,35 +108,21 @@ def run_onnx_benchmark(num_runs: int = 5):
 
         peak_memory_mb = max(peak_memory_mb, get_process_memory_mb())
 
-        # (c) Search & score with re-ranker ON
-        t0 = time.perf_counter()
-        q_embedding = encode_onnx(embed_model, embed_tokenizer, [SAMPLE_QUESTION])
-        scores_dense = cosine_similarity(q_embedding, passage_embeddings)[0]
-        top_candidates = [DUMMY_PASSAGES[i] for i in np.argsort(scores_dense)[::-1]]
-        rerank_scores = predict_rerank_onnx(rerank_model, rerank_tokenizer, SAMPLE_QUESTION, top_candidates)
-        ranked_c = sorted(zip(top_candidates, rerank_scores), key=lambda x: x[1], reverse=True)
-        t1 = time.perf_counter()
-        timings_c.append((t1 - t0) * 1000.0)
-
-        peak_memory_mb = max(peak_memory_mb, get_process_memory_mb())
-
     results = {
         "runs": num_runs,
         "idle_memory_mb": round(idle_memory_mb, 2),
         "peak_memory_mb": round(peak_memory_mb, 2),
         "timing_a_passage_embeddings_avg_ms": round(float(np.mean(timings_a)), 2),
         "timing_b_reranker_off_avg_ms": round(float(np.mean(timings_b)), 2),
-        "timing_c_reranker_on_avg_ms": round(float(np.mean(timings_c)), 2),
     }
 
-    print("\n--- ONNX + INT8 Quantization Benchmark Results ---")
+    print("\n--- Embedding Model Only Benchmark Results ---")
     print(f"Idle Memory: {results['idle_memory_mb']} MB")
     print(f"Peak Memory: {results['peak_memory_mb']} MB")
     print(f"(a) Passage Embeddings avg time: {results['timing_a_passage_embeddings_avg_ms']} ms")
     print(f"(b) Search & score (Re-ranker OFF) avg time: {results['timing_b_reranker_off_avg_ms']} ms")
-    print(f"(c) Search & score (Re-ranker ON) avg time: {results['timing_c_reranker_on_avg_ms']} ms")
 
     return results
 
 if __name__ == "__main__":
-    run_onnx_benchmark()
+    run_embedding_only_benchmark()
