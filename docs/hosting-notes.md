@@ -11,7 +11,9 @@ This document records empirical performance and memory benchmarks for loading an
   * Fixed query: `"What was Arjuna's role in the Kurukshetra war?"`
   * Execution averaged over 5 consecutive runs.
 
-## 3. Empirical Benchmark Results
+---
+
+## 3. Baseline PyTorch CPU Benchmarks
 
 | Metric | Measurement |
 | :--- | :--- |
@@ -21,13 +23,30 @@ This document records empirical performance and memory benchmarks for loading an
 | **(b) Search & Score (Re-ranker OFF)** | **13.18 ms** (avg over 5 runs) |
 | **(c) Search & Score (Re-ranker ON)** | **125.54 ms** (avg over 5 runs) |
 
-## 4. Render Free Plan & Hosting Analysis
+---
+
+## 4. ONNX Runtime + INT8 Dynamic Quantization Benchmarks
+
+Models were exported to ONNX format and INT8 dynamic quantization was applied using HuggingFace Optimum (`optimum[onnxruntime]`).
+
+| Metric | PyTorch Baseline | ONNX + INT8 Quantized | Delta / Improvement |
+| :--- | :--- | :--- | :--- |
+| **Idle Memory (Models Loaded)** | 643.06 MB | **562.73 MB** | **-80.33 MB (-12.5%)** |
+| **Peak Memory (Execution)** | 669.40 MB | **597.16 MB** | **-72.24 MB (-10.8%)** |
+| **(a) Passage Embedding Generation (10 passages)** | 109.89 ms | **52.64 ms** | **2.09x faster (-52.1%)** |
+| **(b) Search & Score (Re-ranker OFF)** | 13.18 ms | **4.91 ms** | **2.68x faster (-62.7%)** |
+| **(c) Search & Score (Re-ranker ON)** | 125.54 ms | **67.64 ms** | **1.86x faster (-46.1%)** |
+
+---
+
+## 5. Render Free Plan & Hosting Analysis Side-by-Side
+
 * **Render Free Plan RAM Limit**: 512 MB RAM.
-* **Feasibility Findings**:
-  * The full PyTorch CPU runtime alongside both `all-MiniLM-L6-v2` and `ms-marco-MiniLM-L-6-v2` models loaded concurrently consumes ~643 MB RAM at idle and up to ~669 MB at peak execution.
-  * **Memory Constraint**: Exceeds Render's 512 MB free tier RAM ceiling, risking Out-Of-Memory (OOM) process termination during application startup or request handling.
-  * **Latency Performance**: Execution times are excellent (13.18 ms without re-ranker, 125.54 ms with re-ranker).
-* **Recommended Next Steps for Production Hosting**:
-  1. **ONNX / Quantized Models**: Export models to ONNX int8 format to reduce memory footprint below 250 MB.
-  2. **Lazy Loading / External Vector DB**: Offload embeddings to a vector DB service (e.g., Qdrant / Pinecone) or external inference API.
-  3. **Tier Upgrade**: Upgrade Render instance to Starter tier (1 GB RAM) or utilize HuggingFace Inference Endpoints / Modal for model hosting.
+* **Findings**:
+  * **PyTorch Baseline**: Consumes 643.06 MB idle / 669.40 MB peak memory, exceeding Render's 512 MB free tier ceiling.
+  * **ONNX + INT8 Quantization**: Reduces memory footprint to 562.73 MB idle / 597.16 MB peak while boosting search & re-ranking speed by ~1.86x (67.64 ms vs 125.54 ms).
+  * **Feasibility Conclusion**: While ONNX + INT8 dynamic quantization significantly reduces memory usage and nearly doubles throughput, hosting both models concurrently in Python in the same process remains close to or slightly above the strict 512 MB free tier ceiling.
+* **Recommended Hosting Architecture**:
+  1. **Lazy Model Loading / Unloading**: Load re-ranker on-demand or separate embedding vs re-ranking endpoints.
+  2. **External Vector Database**: Store pre-computed passage embeddings in Qdrant/Pinecone free tier to eliminate in-process passage embedding computation.
+  3. **Render Starter / HuggingFace Spaces**: Deploy to a 1 GB RAM instance (Render Starter or HF Spaces) for zero-OOM headroom with sub-70ms search & re-rank performance.

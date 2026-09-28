@@ -11,6 +11,7 @@ __pycache__/
 venv/
 env/
 .pytest_cache/
+backend/onnx_models/
 
 # Node
 node_modules/
