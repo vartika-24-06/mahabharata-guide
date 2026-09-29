@@ -2,3 +2,5 @@
 - Dropped Groq-only BYOK for OpenAI + Anthropic + Gemini. Reason: audience has paid keys; free-tier rate limits risk a broken demo.
 - Key gate is lazy (at first request), not up front. Reason: don't ask for a paid key before showing value.
 - Specs authored in Kiro; implementation in Antigravity. Reason: Kiro free credits limited.
+- Dropped self-hosted embedding + re-ranker models (originally chosen for full hybrid search in v1). Reason: measured real memory against the actual 5,578-passage corpus at ~703MB, over Render's free 512MB even after ONNX+int8 quantization (~13% reduction, not enough). Moved to an external embeddings API (our own key) + Supabase pgvector instead of a bigger host or cutting hybrid search from v1.
+- Re-ranking deferred to v2 entirely, not just switched off by default. Reason: any self-hosted transformer model reintroduces the same memory problem; bringing it back needs its own hosting decision (external API or paid host), not a setting.
