@@ -23,6 +23,15 @@ from pathlib import Path
 BACKEND_DIR = Path(__file__).parent
 PASSAGES_PATH = BACKEND_DIR.parent / "data_processed" / "passages.jsonl"
 
+# Load GEMINI_API_KEY / SUPABASE_URL / SUPABASE_SERVICE_KEY from a local
+# backend/.env file if one exists (it's gitignored - never commit it).
+# Falls back to real environment variables if no .env file is present.
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BACKEND_DIR / ".env")
+except ImportError:
+    pass
+
 BATCH_SIZE = 20          # passages embedded per batch
 PAUSE_BETWEEN_BATCHES = 2.0   # seconds - adjust down if your quota allows, up if you hit 429s
 SUPABASE_INSERT_BATCH = 100   # rows per Supabase insert call
