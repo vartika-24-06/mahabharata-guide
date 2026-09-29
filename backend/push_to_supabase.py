@@ -44,12 +44,15 @@ def get_embedding(genai_client, text: str) -> list[float]:
     and adjust here; the rest of the script doesn't need to change."""
     # NOTE: gemini-embedding-001's free tier quota is currently showing as 0
     # for many developers (a known, acknowledged Google-side issue as of
-    # late 2025/2026), even on fresh API keys. text-embedding-004 is the
-    # confirmed-working free-tier alternative and outputs the same
-    # 768-dimension vectors this schema expects.
+    # late 2025/2026), even on fresh API keys. text-embedding-004 has been
+    # fully retired and isn't available at all. gemini-embedding-2 is the
+    # newer model that still works on the free tier. It defaults to a
+    # larger vector size, so output_dimensionality is pinned to 768 to
+    # match the schema in supabase_schema.sql.
     result = genai_client.embed_content(
-        model="models/text-embedding-004",
+        model="models/gemini-embedding-2",
         content=text,
+        output_dimensionality=768,
     )
     return result["embedding"]
 
