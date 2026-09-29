@@ -79,3 +79,16 @@ With no ML model loaded in the FastAPI process, Render's free 512MB plan should 
 This pattern — external embeddings API + managed vector store, no self-hosted model — was confirmed against a real comparable public project (a Harry Potter RAG app: [github.com/aarzoobhatia11/fan-out-RAG-Harry-Potter](https://github.com/aarzoobhatia11/fan-out-RAG-Harry-Potter)), which uses the same combination (Gemini embeddings + Supabase/pgvector + BYOK for generation).
 
 **New cost consideration this introduces:** the embeddings key is ours, not the visitor's, so its usage cost falls on us rather than being deflected by BYOK. It's bounded by the same per-visitor request-rate limit already planned for abuse protection, but is worth a basic usage/budget check regardless (see design.md "Open items").
+
+## 9. BM25 keyword index — real corpus, confirms it stays self-hosted
+
+Built and tested locally against the real 5,578-passage corpus (`backend/build_bm25_index.py`):
+
+| Metric | Value |
+| :--- | :--- |
+| Build time | 1.27 s |
+| Memory after build | 246.68 MB |
+| Index size on disk | 11.63 MB |
+| Sample search time | 14.06 ms |
+
+246MB comfortably fits Render's free 512MB, with headroom for the rest of the FastAPI app — confirming the keyword side of search never needed to move off our own server, only the meaning-based/embedding side did.
