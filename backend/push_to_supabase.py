@@ -42,8 +42,13 @@ def get_embedding(genai_client, text: str) -> list[float]:
     name may have changed since this was written - check
     https://ai.google.dev/gemini-api/docs/embeddings for the current API
     and adjust here; the rest of the script doesn't need to change."""
+    # NOTE: gemini-embedding-001's free tier quota is currently showing as 0
+    # for many developers (a known, acknowledged Google-side issue as of
+    # late 2025/2026), even on fresh API keys. text-embedding-004 is the
+    # confirmed-working free-tier alternative and outputs the same
+    # 768-dimension vectors this schema expects.
     result = genai_client.embed_content(
-        model="models/gemini-embedding-001",
+        model="models/text-embedding-004",
         content=text,
     )
     return result["embedding"]
