@@ -2,18 +2,21 @@
 Task 6 (part 2): embed every real passage via Gemini's embeddings API
 (our own server-side key) and push them into Supabase (pgvector).
 
-Run this ONCE, from your own machine, after:
+Run this from your own machine, after:
 1. Creating the Supabase project and enabling the "vector" extension.
 2. Running supabase_schema.sql in the Supabase SQL Editor.
-3. Setting these three environment variables (never commit them):
+3. Setting these three values, either as real environment variables or
+   in a backend/.env file (gitignored, never commit it):
    GEMINI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY
 
 Install first:
-    pip install google-generativeai supabase
+    pip install google-generativeai supabase python-dotenv
 
-This calls the embeddings API ~5,578 times (once per passage), with a
-short pause between batches to stay well under free-tier rate limits.
-It will take a while - that's expected for a one-time build step.
+Embeds in batches (one API call per BATCH_SIZE passages, not one call
+per passage) to stay fast. Safe to interrupt and re-run: it checks how
+many rows are already in Supabase and picks up from there instead of
+starting over, as long as you don't change BATCH_SIZE or the passage
+file between runs.
 """
 import json
 import os
@@ -32,29 +35,34 @@ try:
 except ImportError:
     pass
 
-BATCH_SIZE = 20          # passages embedded per batch
-PAUSE_BETWEEN_BATCHES = 2.0   # seconds - adjust down if your quota allows, up if you hit 429s
-SUPABASE_INSERT_BATCH = 100   # rows per Supabase insert call
+BATCH_SIZE = 50               # passages embedded per API call (and per Supabase insert)
+PAUSE_BETWEEN_BATCHES = 1.0   # seconds - adjust down if your quota allows, up if you hit 429s
 
 
-def get_embedding(genai_client, text: str) -> list[float]:
-    """Wraps the embeddings call. If this errors, the exact method/model
-    name may have changed since this was written - check
-    https://ai.google.dev/gemini-api/docs/embeddings for the current API
-    and adjust here; the rest of the script doesn't need to change."""
-    # NOTE: gemini-embedding-001's free tier quota is currently showing as 0
-    # for many developers (a known, acknowledged Google-side issue as of
-    # late 2025/2026), even on fresh API keys. text-embedding-004 has been
-    # fully retired and isn't available at all. gemini-embedding-2 is the
-    # newer model that still works on the free tier. It defaults to a
-    # larger vector size, so output_dimensionality is pinned to 768 to
-    # match the schema in supabase_schema.sql.
+def get_embeddings_batch(genai_client, texts: list[str]) -> list[list[float]]:
+    """Embeds a whole batch of texts in a single API call. If this errors,
+    the exact method/model name may have changed since this was written -
+    check https://ai.google.dev/gemini-api/docs/embeddings for the current
+    API and adjust here; the rest of the script doesn't need to change.
+
+    NOTE: gemini-embedding-001's free tier quota is currently showing as 0
+    for many developers (a known, acknowledged Google-side issue as of
+    late 2025/2026), even on fresh API keys. text-embedding-004 has been
+    fully retired and isn't available at all. gemini-embedding-2 is the
+    newer model that still works on the free tier. It defaults to a
+    larger vector size, so output_dimensionality is pinned to 768 to
+    match the schema in supabase_schema.sql."""
     result = genai_client.embed_content(
         model="models/gemini-embedding-2",
-        content=text,
+        content=texts,
         output_dimensionality=768,
     )
-    return result["embedding"]
+    embedding = result["embedding"]
+    # Some SDK versions return a single flat list when content has only
+    # one item instead of a list-of-lists - normalize that case.
+    if texts and len(texts) == 1 and embedding and isinstance(embedding[0], float):
+        return [embedding]
+    return embedding
 
 
 def main():
@@ -64,7 +72,7 @@ def main():
     if not all([gemini_key, supabase_url, supabase_key]):
         raise SystemExit(
             "Missing one of GEMINI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY "
-            "environment variables. Set all three before running this."
+            "environment variables/.env values. Set all three before running this."
         )
 
     import google.generativeai as genai
@@ -78,41 +86,52 @@ def main():
     with open(PASSAGES_PATH) as f:
         for line in f:
             passages.append(json.loads(line))
-    print(f"Loaded {len(passages)} passages. Embedding and pushing to Supabase...")
+    print(f"Loaded {len(passages)} passages.")
 
-    rows_buffer = []
-    total_pushed = 0
+    # Resume support: count rows already pushed and skip that many, since
+    # passages are always inserted in file order.
+    existing = supabase.table("passages").select("id", count="exact").execute()
+    already_pushed = existing.count or 0
+    if already_pushed:
+        print(f"Found {already_pushed} rows already in Supabase - resuming from there.")
+    remaining = passages[already_pushed:]
+    if not remaining:
+        print("Nothing left to push - all passages are already in Supabase.")
+        return
+
+    print(f"Embedding and pushing {len(remaining)} remaining passages...")
+    total_pushed = already_pushed
     t_start = time.perf_counter()
 
-    for i, p in enumerate(passages):
-        embedding = get_embedding(genai, p["text"])
-        rows_buffer.append({
-            "parva_file": p["parva_file"],
-            "book_number": p["book_number"],
-            "parva_name": p["parva_name"],
-            "section": p["section"],
-            "passage_index": p["passage_index"],
-            "text": p["text"],
-            "embedding": embedding,
-        })
+    for batch_start in range(0, len(remaining), BATCH_SIZE):
+        batch = remaining[batch_start:batch_start + BATCH_SIZE]
+        texts = [p["text"] for p in batch]
+        embeddings = get_embeddings_batch(genai, texts)
 
-        if len(rows_buffer) >= SUPABASE_INSERT_BATCH:
-            supabase.table("passages").insert(rows_buffer).execute()
-            total_pushed += len(rows_buffer)
-            rows_buffer = []
-            elapsed = time.perf_counter() - t_start
-            print(f"  ...pushed {total_pushed}/{len(passages)} "
-                  f"({elapsed:.0f}s elapsed)")
+        rows = [
+            {
+                "parva_file": p["parva_file"],
+                "book_number": p["book_number"],
+                "parva_name": p["parva_name"],
+                "section": p["section"],
+                "passage_index": p["passage_index"],
+                "text": p["text"],
+                "embedding": emb,
+            }
+            for p, emb in zip(batch, embeddings)
+        ]
+        supabase.table("passages").insert(rows).execute()
+        total_pushed += len(rows)
 
-        if (i + 1) % BATCH_SIZE == 0:
-            time.sleep(PAUSE_BETWEEN_BATCHES)
+        elapsed = time.perf_counter() - t_start
+        print(f"  ...pushed {total_pushed}/{len(passages)} "
+              f"({elapsed:.0f}s elapsed this run)")
 
-    if rows_buffer:
-        supabase.table("passages").insert(rows_buffer).execute()
-        total_pushed += len(rows_buffer)
+        time.sleep(PAUSE_BETWEEN_BATCHES)
 
     elapsed = time.perf_counter() - t_start
-    print(f"\nDone. Pushed {total_pushed} passages to Supabase in {elapsed:.0f}s.")
+    print(f"\nDone. {total_pushed}/{len(passages)} passages now in Supabase "
+          f"({elapsed:.0f}s this run).")
     print("Next: run the ivfflat index-creation line in supabase_schema.sql "
           "(it's commented out there - uncomment and run it now that the "
           "table is populated).")
