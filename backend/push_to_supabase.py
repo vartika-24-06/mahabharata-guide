@@ -35,8 +35,8 @@ try:
 except ImportError:
     pass
 
-BATCH_SIZE = 50               # passages embedded per API call (and per Supabase insert)
-PAUSE_BETWEEN_BATCHES = 1.0   # seconds - adjust down if your quota allows, up if you hit 429s
+BATCH_SIZE = 20               # passages embedded per API call (and per Supabase insert)
+PAUSE_BETWEEN_BATCHES = 3.0   # seconds - adjust down if your quota allows, up if you hit 429s
 
 
 def get_embeddings_batch(genai_client, texts: list[str]) -> list[list[float]]:
@@ -51,12 +51,29 @@ def get_embeddings_batch(genai_client, texts: list[str]) -> list[list[float]]:
     fully retired and isn't available at all. gemini-embedding-2 is the
     newer model that still works on the free tier. It defaults to a
     larger vector size, so output_dimensionality is pinned to 768 to
-    match the schema in supabase_schema.sql."""
-    result = genai_client.embed_content(
-        model="models/gemini-embedding-2",
-        content=texts,
-        output_dimensionality=768,
-    )
+    match the schema in supabase_schema.sql.
+
+    Retries with backoff on 429 (rate limit) errors instead of crashing -
+    free-tier per-minute limits are tight on this model, but they reset
+    quickly, so waiting it out is normal and expected here."""
+    from google.api_core.exceptions import ResourceExhausted
+
+    max_attempts = 6
+    for attempt in range(1, max_attempts + 1):
+        try:
+            result = genai_client.embed_content(
+                model="models/gemini-embedding-2",
+                content=texts,
+                output_dimensionality=768,
+            )
+            break
+        except ResourceExhausted:
+            if attempt == max_attempts:
+                raise
+            wait_s = 15 * attempt
+            print(f"  ...rate-limited, waiting {wait_s}s before retrying "
+                  f"(attempt {attempt}/{max_attempts})")
+            time.sleep(wait_s)
     embedding = result["embedding"]
     # Some SDK versions return a single flat list when content has only
     # one item instead of a list-of-lists - normalize that case.
