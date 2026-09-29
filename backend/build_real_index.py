@@ -28,13 +28,9 @@ def main():
 
     from sentence_transformers import SentenceTransformer
 
-    print("\nLoading sentence-transformers/all-MiniLM-L6-v2 with ONNX backend + int8 quantization...")
+    print("\nLoading sentence-transformers/all-MiniLM-L6-v2 (plain PyTorch backend)...")
     t0 = time.perf_counter()
-    model = SentenceTransformer(
-        "sentence-transformers/all-MiniLM-L6-v2",
-        backend="onnx",
-        model_kwargs={"file_name": "onnx/model_qint8_avx512.onnx"},
-    )
+    model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
     load_time = time.perf_counter() - t0
     mem_after_model = mem_mb()
     print(f"Model loaded in {load_time:.2f}s. Memory after model load: {mem_after_model:.2f} MB")
