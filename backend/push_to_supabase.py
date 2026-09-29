@@ -82,6 +82,22 @@ def get_embeddings_batch(genai_client, texts: list[str]) -> list[list[float]]:
     return embedding
 
 
+def insert_with_retry(supabase, rows, max_attempts=4):
+    """Inserts a batch of rows, retrying on transient network drops
+    (connection resets, timeouts) instead of losing the whole run."""
+    for attempt in range(1, max_attempts + 1):
+        try:
+            supabase.table("passages").insert(rows).execute()
+            return
+        except Exception as exc:
+            if attempt == max_attempts:
+                raise
+            wait_s = 10 * attempt
+            print(f"  ...insert failed ({exc.__class__.__name__}), retrying "
+                  f"in {wait_s}s (attempt {attempt}/{max_attempts})")
+            time.sleep(wait_s)
+
+
 def main():
     gemini_key = os.environ.get("GEMINI_API_KEY")
     supabase_url = os.environ.get("SUPABASE_URL")
@@ -137,7 +153,7 @@ def main():
             }
             for p, emb in zip(batch, embeddings)
         ]
-        supabase.table("passages").insert(rows).execute()
+        insert_with_retry(supabase, rows)
         total_pushed += len(rows)
 
         elapsed = time.perf_counter() - t_start
