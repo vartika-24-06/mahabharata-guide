@@ -1,3 +1,4 @@
+import json
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -9,8 +10,10 @@ import qna_endpoint
 import rate_limit
 import scope
 import search
+import story_endpoint
 
 BACKEND_DIR = Path(__file__).parent
+CATALOGUE_PATH = BACKEND_DIR.parent / "data_processed" / "catalogue.json"
 
 try:
     from dotenv import load_dotenv
@@ -25,6 +28,16 @@ resources = {}
 async def lifespan(app: FastAPI):
     print("Loading BM25 keyword index...")
     resources["bm25_index"] = search.load_bm25_index()
+
+    print("Loading story catalogue...")
+    if not CATALOGUE_PATH.exists():
+        raise SystemExit(
+            f"Story catalogue not found at {CATALOGUE_PATH}. Run "
+            "'python build_catalogue.py' from backend/ first (it reads "
+            "data_processed/passages.jsonl, same as build_bm25_index.py)."
+        )
+    with open(CATALOGUE_PATH) as f:
+        resources["catalogue"] = json.load(f)
 
     print("Connecting to Supabase and OpenAI (our own embeddings key)...")
     import openai
@@ -48,6 +61,7 @@ async def health_check():
     return {
         "status": "ok",
         "bm25_loaded": "bm25_index" in resources,
+        "catalogue_loaded": "catalogue" in resources,
         "supabase_connected": "supabase_client" in resources,
     }
 
@@ -58,3 +72,11 @@ async def ask(request: Request, body: qna_endpoint.AskRequest):
     pipeline (rate limit -> guardrails -> scope -> search -> classify ->
     answer -> citations) and the header/error contract it follows."""
     return await qna_endpoint.handle_ask(request, body, resources)
+
+
+@app.post("/api/story")
+async def tell_story(request: Request, body: story_endpoint.StoryRequest):
+    """Task 15: the real Story endpoint. See story_endpoint.py for the
+    request_type branches (typed/character/parva/surprise/continue/
+    another) and the episode model it uses."""
+    return await story_endpoint.handle_story(request, body, resources)

@@ -64,12 +64,17 @@ def load_passages():
 
 
 def build_character_entry(name, variants, passages):
+    # Keyed by (book_number, section), NOT (parva_name, section) - the 18
+    # parvas are not in alphabetical order in the epic (Adi, Sabha, Vana,
+    # Virata, Udyoga, Bhishma, ...), so sorting by parva_name would give
+    # "Tell me more" and "the next part" a nonsensical reading order.
+    # book_number is the corpus's own canonical book order (ingest.py).
     pattern = re.compile(r"\b(" + "|".join(re.escape(v) for v in variants) + r")\b", re.I)
-    section_mentions = defaultdict(int)  # (parva_name, section) -> mention count
+    section_mentions = defaultdict(int)  # (book_number, parva_name, section) -> count
     for p in passages:
         count = len(pattern.findall(p["text"]))
         if count:
-            section_mentions[(p["parva_name"], p["section"])] += count
+            section_mentions[(p["book_number"], p["parva_name"], p["section"])] += count
 
     qualifying = {
         key: count for key, count in section_mentions.items()
@@ -83,22 +88,25 @@ def build_character_entry(name, variants, passages):
         "qualifying_sections": len(qualifying),
         "section_refs": [
             {"parva_name": parva, "section": section}
-            for (parva, section) in sorted(qualifying.keys())
+            for (_book, parva, section) in sorted(qualifying.keys())
         ],
     }
 
 
 def build_parva_entries(passages):
     sections_by_parva = defaultdict(set)
+    book_number_by_parva = {}
     for p in passages:
         sections_by_parva[p["parva_name"]].add(p["section"])
+        book_number_by_parva[p["parva_name"]] = p["book_number"]
 
     entries = []
-    for parva_name in sorted(sections_by_parva):
+    for parva_name in sorted(sections_by_parva, key=lambda name: book_number_by_parva[name]):
         sections = sorted(sections_by_parva[parva_name])
         entries.append({
             "subject": parva_name,
             "type": "parva",
+            "book_number": book_number_by_parva[parva_name],
             "section_refs": [
                 {"parva_name": parva_name, "section": s} for s in sections
             ],
