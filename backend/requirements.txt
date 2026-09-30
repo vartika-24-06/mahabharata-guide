@@ -1,7 +1,7 @@
-fastapi==0.115.8
-uvicorn[standard]==0.34.0
-httpx==0.28.1
-pydantic==2.10.6
+fastapi
+uvicorn[standard]
+httpx
+pydantic
 rank_bm25
 openai
 supabase
