@@ -39,7 +39,7 @@ This plan builds the shared engine behind Q&A mode, story mode and the guardrail
 - [x] 8. Scope check
   - Curated names, places, themes and spelling variants; follow-ups pass when there is conversation context; fixed one-line declines
 - [x] 9. Rule-override, prompt-reveal and persona detection with fixed decline wording
-- [ ] 10. Request rate limit per visitor, with a polite wait message
+- [x] 10. Request rate limit per visitor, with a polite wait message
   - This limit also bounds how often our own embeddings key gets called per visitor — no separate budget limit needed for v1, but worth a basic usage check (see design.md "Open items")
 
 ### Group 4: Answering
