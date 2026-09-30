@@ -92,3 +92,20 @@ Built and tested locally against the real 5,578-passage corpus (`backend/build_b
 | Sample search time | 14.06 ms |
 
 246MB comfortably fits Render's free 512MB, with headroom for the rest of the FastAPI app — confirming the keyword side of search never needed to move off our own server, only the meaning-based/embedding side did.
+
+## 10. Chunking fix: passage count corrected from 5,578 to 8,442
+
+While pushing embeddings, two passages in ANUSASANA PARVA (Book 13) failed OpenAI's 8,192-token input limit outright - each was a single 57-60K-character passage. Investigating found the root cause was broader than those two: `chunk_into_passages` only split on blank-line paragraph breaks, and 635 paragraphs across the corpus (of ~7,874 total) had no such breaks at all, so entire sections were passing through as one oversized passage each - some several thousand words long, well past the ~300-word citation target.
+
+Fixed by adding a sentence-level fallback split for any paragraph over 3x the target word count (`backend/ingest.py`, `_split_oversized_paragraph`). Total word count is unchanged (2,400,637 words either way); passage count went from 5,578 to 8,442, and average passage size moved from ~430 words to ~284 words - much closer to the intended ~300-word citation size. BM25 index rebuilt against the corrected corpus with no meaningful change in memory or speed:
+
+| Metric | Value |
+| :--- | :--- |
+| Passage count | 8,442 |
+| Build time | 1.44 s |
+| Memory after build | 251.82 MB |
+| Index size on disk | 13.48 MB |
+| Sample search time | 40.05 ms |
+| Memory final | 254.48 MB |
+
+Embeddings had to be re-pushed to Supabase against the corrected passage set (table truncated first, since the old 5,578-passage embeddings no longer match).

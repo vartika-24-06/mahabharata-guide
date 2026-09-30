@@ -130,6 +130,33 @@ def strip_footnote_markers(text: str) -> str:
     return re.sub(r'\[\d+\]', '', text)
 
 
+def _split_oversized_paragraph(para: str, target_words: int) -> list[str]:
+    """A handful of source sections (e.g. two in ANUSASANA PARVA) have no
+    paragraph breaks at all - the whole section is one giant block of text.
+    Without this, such a paragraph would pass straight through
+    chunk_into_passages untouched and become a single 50,000+ character
+    "passage", which is both a bad citation to show someone and too long
+    for the OpenAI embeddings API's 8,192-token input limit. Splits on
+    sentence boundaries instead, so it degrades to the same target size
+    as normal passages rather than becoming an outlier."""
+    sentences = re.split(r'(?<=[.!?])\s+', para)
+    chunks = []
+    current: list[str] = []
+    current_words = 0
+    for sent in sentences:
+        wc = len(sent.split())
+        if current_words + wc > target_words and current:
+            chunks.append(" ".join(current))
+            current = [sent]
+            current_words = wc
+        else:
+            current.append(sent)
+            current_words += wc
+    if current:
+        chunks.append(" ".join(current))
+    return chunks
+
+
 def chunk_into_passages(text: str, target_words: int = 300) -> list[str]:
     """Splits section text into passages of roughly target_words words,
     breaking on paragraph boundaries so we don't cut mid-sentence where avoidable."""
@@ -139,7 +166,17 @@ def chunk_into_passages(text: str, target_words: int = 300) -> list[str]:
     current_words = 0
     for para in paragraphs:
         wc = len(para.split())
-        if current_words + wc > target_words and current:
+        if wc > target_words * 3:
+            # A single paragraph far bigger than our target - almost always
+            # means the source had no paragraph breaks in this section at
+            # all. Flush whatever's pending, split this paragraph on its
+            # own, then continue.
+            if current:
+                passages.append(" ".join(current))
+                current = []
+                current_words = 0
+            passages.extend(_split_oversized_paragraph(para, target_words))
+        elif current_words + wc > target_words and current:
             passages.append(" ".join(current))
             current = [para]
             current_words = wc
