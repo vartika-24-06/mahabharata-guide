@@ -33,7 +33,7 @@ This plan builds the shared engine behind Q&A mode, story mode and the guardrail
 
 ### Group 3: Search and scope
 
-- [ ] 7. Hybrid search
+- [x] 7. Hybrid search
   - Embed the incoming question via our own embeddings key; query Supabase (pgvector) for the closest passages; merge with the local BM25 keyword results by rank
   - If the embeddings API call fails or rate-limits, fall back to keyword-only results for that request rather than failing (design.md Property 8 / Error Handling)
 - [ ] 8. Scope check
