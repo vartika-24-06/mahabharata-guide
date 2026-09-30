@@ -1,5 +1,5 @@
 """
-Task 6 (part 2): embed every real passage via Gemini's embeddings API
+Task 6 (part 2): embed every real passage via OpenAI's embeddings API
 (our own server-side key) and push them into Supabase (pgvector).
 
 Run this from your own machine, after:
@@ -7,16 +7,28 @@ Run this from your own machine, after:
 2. Running supabase_schema.sql in the Supabase SQL Editor.
 3. Setting these three values, either as real environment variables or
    in a backend/.env file (gitignored, never commit it):
-   GEMINI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY
+   OPENAI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY
 
 Install first:
-    pip install google-generativeai supabase python-dotenv
+    pip install openai supabase python-dotenv
 
 Embeds in batches (one API call per BATCH_SIZE passages, not one call
 per passage) to stay fast. Safe to interrupt and re-run: it checks how
 many rows are already in Supabase and picks up from there instead of
 starting over, as long as you don't change BATCH_SIZE or the passage
 file between runs.
+
+IMPORTANT: switched from Gemini to OpenAI for embeddings (see
+docs/decision-log.md) because Gemini's free tier caps at 1,000
+embedding requests/day and Google Cloud billing in some regions forces
+a large minimum prepaid top-up, disproportionate to this corpus's real
+cost (~$0.07 on OpenAI's text-embedding-3-small). Embeddings from
+different models are NOT comparable in the same vector search, so if
+any rows were already pushed using Gemini embeddings, truncate the
+table first:
+    truncate table passages;
+(run that in the Supabase SQL Editor before running this script, so
+every row in the table comes from the same embedding model.)
 """
 import json
 import os
@@ -26,7 +38,7 @@ from pathlib import Path
 BACKEND_DIR = Path(__file__).parent
 PASSAGES_PATH = BACKEND_DIR.parent / "data_processed" / "passages.jsonl"
 
-# Load GEMINI_API_KEY / SUPABASE_URL / SUPABASE_SERVICE_KEY from a local
+# Load OPENAI_API_KEY / SUPABASE_URL / SUPABASE_SERVICE_KEY from a local
 # backend/.env file if one exists (it's gitignored - never commit it).
 # Falls back to real environment variables if no .env file is present.
 try:
@@ -35,51 +47,40 @@ try:
 except ImportError:
     pass
 
-BATCH_SIZE = 20               # passages embedded per API call (and per Supabase insert)
-PAUSE_BETWEEN_BATCHES = 3.0   # seconds - adjust down if your quota allows, up if you hit 429s
+BATCH_SIZE = 100              # passages embedded per API call (and per Supabase insert)
+PAUSE_BETWEEN_BATCHES = 0.5   # seconds - adjust down if your quota allows, up if you hit 429s
 
 
-def get_embeddings_batch(genai_client, texts: list[str]) -> list[list[float]]:
+def get_embeddings_batch(openai_client, texts: list[str]) -> list[list[float]]:
     """Embeds a whole batch of texts in a single API call. If this errors,
     the exact method/model name may have changed since this was written -
-    check https://ai.google.dev/gemini-api/docs/embeddings for the current
-    API and adjust here; the rest of the script doesn't need to change.
+    check https://platform.openai.com/docs/guides/embeddings for the
+    current API and adjust here; the rest of the script doesn't need to
+    change.
 
-    NOTE: gemini-embedding-001's free tier quota is currently showing as 0
-    for many developers (a known, acknowledged Google-side issue as of
-    late 2025/2026), even on fresh API keys. text-embedding-004 has been
-    fully retired and isn't available at all. gemini-embedding-2 is the
-    newer model that still works on the free tier. It defaults to a
-    larger vector size, so output_dimensionality is pinned to 768 to
+    text-embedding-3-small supports a `dimensions` parameter to truncate
+    its native embedding down to a smaller size - pinned to 768 here to
     match the schema in supabase_schema.sql.
 
-    Retries with backoff on 429 (rate limit) errors instead of crashing -
-    free-tier per-minute limits are tight on this model, but they reset
-    quickly, so waiting it out is normal and expected here."""
-    from google.api_core.exceptions import ResourceExhausted
+    Retries with backoff on 429 (rate limit) errors instead of crashing."""
+    import openai
 
     max_attempts = 6
     for attempt in range(1, max_attempts + 1):
         try:
-            result = genai_client.embed_content(
-                model="models/gemini-embedding-2",
-                content=texts,
-                output_dimensionality=768,
+            result = openai_client.embeddings.create(
+                model="text-embedding-3-small",
+                input=texts,
+                dimensions=768,
             )
-            break
-        except ResourceExhausted:
+            return [item.embedding for item in result.data]
+        except openai.RateLimitError:
             if attempt == max_attempts:
                 raise
             wait_s = 15 * attempt
             print(f"  ...rate-limited, waiting {wait_s}s before retrying "
                   f"(attempt {attempt}/{max_attempts})")
             time.sleep(wait_s)
-    embedding = result["embedding"]
-    # Some SDK versions return a single flat list when content has only
-    # one item instead of a list-of-lists - normalize that case.
-    if texts and len(texts) == 1 and embedding and isinstance(embedding[0], float):
-        return [embedding]
-    return embedding
 
 
 def insert_with_retry(supabase, rows, max_attempts=4):
@@ -99,19 +100,19 @@ def insert_with_retry(supabase, rows, max_attempts=4):
 
 
 def main():
-    gemini_key = os.environ.get("GEMINI_API_KEY")
+    openai_key = os.environ.get("OPENAI_API_KEY")
     supabase_url = os.environ.get("SUPABASE_URL")
     supabase_key = os.environ.get("SUPABASE_SERVICE_KEY")
-    if not all([gemini_key, supabase_url, supabase_key]):
+    if not all([openai_key, supabase_url, supabase_key]):
         raise SystemExit(
-            "Missing one of GEMINI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY "
+            "Missing one of OPENAI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY "
             "environment variables/.env values. Set all three before running this."
         )
 
-    import google.generativeai as genai
+    import openai
     from supabase import create_client
 
-    genai.configure(api_key=gemini_key)
+    openai_client = openai.OpenAI(api_key=openai_key)
     supabase = create_client(supabase_url, supabase_key)
 
     print(f"Reading real passages from {PASSAGES_PATH} ...")
@@ -139,7 +140,7 @@ def main():
     for batch_start in range(0, len(remaining), BATCH_SIZE):
         batch = remaining[batch_start:batch_start + BATCH_SIZE]
         texts = [p["text"] for p in batch]
-        embeddings = get_embeddings_batch(genai, texts)
+        embeddings = get_embeddings_batch(openai_client, texts)
 
         rows = [
             {

@@ -10,7 +10,8 @@ create table if not exists passages (
     section int not null,
     passage_index int not null,
     text text not null,
-    -- gemini-embedding-001 produces 768-dimensional vectors; adjust this
+    -- text-embedding-3-small (OpenAI), truncated to 768 dimensions via
+    -- the `dimensions` parameter in push_to_supabase.py; adjust this
     -- number if a different embeddings model/dimension is used.
     embedding vector(768)
 );
