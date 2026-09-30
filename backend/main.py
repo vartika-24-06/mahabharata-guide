@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
+import scope
 import search
 
 BACKEND_DIR = Path(__file__).parent
@@ -49,10 +50,16 @@ async def health_check():
 
 
 @app.get("/debug/search")
-async def debug_search(q: str, k: int = 8):
-    """Temporary manual-testing endpoint for Task 7's hybrid search,
-    ahead of the real Q&A endpoint (Task 13). Not part of the product
-    surface - remove or gate this once Task 13 lands."""
+async def debug_search(q: str, k: int = 8, has_context: bool = False):
+    """Temporary manual-testing endpoint for Task 7's hybrid search and
+    Task 8's scope check, ahead of the real Q&A endpoint (Task 13). Not
+    part of the product surface - remove or gate this once Task 13 lands.
+    has_context is a manual override for testing follow-up behavior;
+    Task 19 (browser session context) will wire this up for real."""
+    in_scope, decline_message = scope.check_scope(q, has_context=has_context)
+    if not in_scope:
+        return {"query": q, "in_scope": False, "message": decline_message}
+
     results, degraded = search.hybrid_search(
         query=q,
         bm25_index=resources["bm25_index"],
@@ -62,6 +69,7 @@ async def debug_search(q: str, k: int = 8):
     )
     return {
         "query": q,
+        "in_scope": True,
         "meaning_search_degraded": degraded,
         "results": [
             {
