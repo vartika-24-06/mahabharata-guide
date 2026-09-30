@@ -46,7 +46,7 @@ This plan builds the shared engine behind Q&A mode, story mode and the guardrail
 
 - [x] 11. Question classifier
   - Short call to the visitor's model; returns label and confidence; low confidence becomes ambiguous
-- [ ] 12. Answer writer and citation builder
+- [x] 12. Answer writer and citation builder
   - Prompt rules from the design; citations built from passage ids; drop and recheck when an id does not exist
 - [ ] 13. Q&A endpoint
   - Short answers, ambiguous two-sentence format, Tell Me More, "no good answer" with related topics, follow-ups using context sent from the browser
