@@ -133,8 +133,13 @@ def run_one(question: str, has_context: bool, provider: str, api_key: str, model
         text = raw.get("answer", "")
 
     if not citations:
+        # Diagnostic detail for a no_answer outcome: was retrieval itself
+        # empty/thin (num_passages), or did search find passages but the
+        # model's used_ids came back empty/invalid (raw_model_output)?
+        # Those are two different problems to chase - the confusion table
+        # alone can't tell them apart.
         return {"actual": "no_answer", "reason": "no_citations", "message": text, "degraded": degraded,
-                "confidence": classification["confidence"]}
+                "confidence": classification["confidence"], "num_passages": len(passages), "raw_model_output": raw}
 
     return {"actual": label, "message": text, "degraded": degraded, "confidence": classification["confidence"]}
 
@@ -205,6 +210,14 @@ def main():
 
         if not match:
             mismatches.append((row_num, query, expected, actual))
+            if actual == "no_answer":
+                # Tells apart two different problems that both look like
+                # "no_answer" in the confusion table: retrieval finding
+                # nothing worth citing (num_passages low/0) vs. retrieval
+                # finding passages but the model's used_ids coming back
+                # empty or invalid (raw_model_output shows what it said).
+                print(f"       [diagnostic] {result.get('num_passages', 0)} passages retrieved; "
+                      f"model output: {result.get('raw_model_output')!r}")
 
         if row_num in VERDICT_CHECK_ROWS and actual not in ("decline", "no_answer", "provider_error"):
             verdict_spotchecks.append((row_num, query, result.get("message", "")))

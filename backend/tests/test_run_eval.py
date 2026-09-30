@@ -100,6 +100,8 @@ def test_run_one_falls_back_to_no_answer_when_citations_empty(mock_guardrails, m
 
     assert result["actual"] == "no_answer"
     assert result["degraded"] is True
+    assert result["num_passages"] == 0
+    assert result["raw_model_output"] == {}
 
 
 @patch("run_eval.answer.write_answer")

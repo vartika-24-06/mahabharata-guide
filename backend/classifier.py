@@ -46,7 +46,7 @@ def classify_question(
     raw_label is what the model actually said before the confidence
     threshold was applied - label is what to act on (low confidence gets
     downgraded to "ambiguous" regardless of what the model said)."""
-    response_text = llm_client.complete(
+    response_text = llm_client.complete_safe(
         provider=provider,
         api_key=api_key,
         system=SYSTEM_PROMPT,

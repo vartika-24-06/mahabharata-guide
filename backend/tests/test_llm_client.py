@@ -115,3 +115,40 @@ if __name__ == "__main__":
     test_gemini_success()
     test_unknown_provider()
     print("All llm_client tests passed.")
+
+
+def test_complete_safe_wraps_timeout_as_llm_error():
+    with patch("llm_client.httpx.post", side_effect=llm_client.httpx.TimeoutException("timed out")):
+        try:
+            llm_client.complete_safe("openai", "k", "sys", "user")
+            assert False, "expected LLMError"
+        except llm_client.LLMError as e:
+            assert e.kind == "other"
+            assert "timed out" in str(e)
+
+
+def test_complete_safe_wraps_connection_error_as_llm_error():
+    with patch("llm_client.httpx.post", side_effect=llm_client.httpx.ConnectError("refused")):
+        try:
+            llm_client.complete_safe("openai", "k", "sys", "user")
+            assert False, "expected LLMError"
+        except llm_client.LLMError as e:
+            assert e.kind == "other"
+            assert "Could not reach the provider" in str(e)
+
+
+def test_complete_safe_still_raises_llm_error_from_http_status():
+    mock_response = MagicMock(status_code=401)
+    with patch("llm_client.httpx.post", return_value=mock_response):
+        try:
+            llm_client.complete_safe("openai", "k", "sys", "user")
+            assert False, "expected LLMError"
+        except llm_client.LLMError as e:
+            assert e.kind == "auth"
+
+
+def test_complete_safe_passes_through_on_success():
+    mock_response = MagicMock(status_code=200)
+    mock_response.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
+    with patch("llm_client.httpx.post", return_value=mock_response):
+        assert llm_client.complete_safe("openai", "k", "sys", "user") == "ok"

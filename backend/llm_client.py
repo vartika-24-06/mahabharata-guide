@@ -141,6 +141,33 @@ def complete(provider: str, api_key: str, system: str, user: str,
     return _PROVIDER_FUNCS[provider](api_key, model, system, user, max_tokens, timeout)
 
 
+def complete_safe(provider: str, api_key: str, system: str, user: str,
+                   model: str | None = None, max_tokens: int = 800,
+                   timeout: float = 30) -> str:
+    """Same contract as complete(), but also normalizes a raw httpx
+    timeout/connection failure into LLMError (kind "other") instead of
+    letting it propagate uncaught.
+
+    Found via a real live-eval run (Task 19): a genuine OpenAI read
+    timeout during answer.write_answer() crashed run_eval.py with a raw
+    httpx.ReadTimeout traceback - and the exact same call, from the same
+    module, is what qna_endpoint.py and story_endpoint.py use in
+    production, each of which only catches LLMError. Without this, a
+    slow provider response would 500 the whole request instead of
+    returning the qna-mode/story-mode "provider had a problem" response
+    (Requirement 11) those endpoints are supposed to give. complete()
+    itself is left as-is (and still used directly by /api/ping, which
+    wants its own distinct 504/502 codes) - this wrapper is for the
+    classifier/answer/story callers that just want one LLMError shape at
+    their existing try/except call sites."""
+    try:
+        return complete(provider, api_key, system, user, model, max_tokens, timeout)
+    except httpx.TimeoutException:
+        raise LLMError("other", "The provider timed out before responding. Please try again.")
+    except httpx.RequestError as exc:
+        raise LLMError("other", f"Could not reach the provider ({exc.__class__.__name__}).")
+
+
 def extract_json(text: str) -> dict:
     """Models sometimes wrap JSON in a markdown code fence or add a
     sentence before/after it despite being asked for JSON only. Strips

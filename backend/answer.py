@@ -94,7 +94,7 @@ def write_full_answer(
     context = _build_context_block(passages)
     user_prompt = f"Question: {question}\n\nNumbered passages:\n{context}"
 
-    response_text = llm_client.complete(
+    response_text = llm_client.complete_safe(
         provider=provider,
         api_key=api_key,
         system=_expand_prompt(label),
@@ -133,7 +133,7 @@ def write_answer(
     )
     user_prompt = f"Question: {question}\n\nNumbered passages:\n{context}"
 
-    response_text = llm_client.complete(
+    response_text = llm_client.complete_safe(
         provider=provider,
         api_key=api_key,
         system=system_prompt,

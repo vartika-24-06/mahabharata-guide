@@ -65,7 +65,7 @@ def write_snippet(
     context = _build_context_block(passages)
     user_prompt = f"Numbered passages:\n{context}"
 
-    response_text = llm_client.complete(
+    response_text = llm_client.complete_safe(
         provider=provider,
         api_key=api_key,
         system=_snippet_prompt(subject),
@@ -98,7 +98,7 @@ def write_continuation(
         f"New numbered passages (continue from here):\n{context}"
     )
 
-    response_text = llm_client.complete(
+    response_text = llm_client.complete_safe(
         provider=provider,
         api_key=api_key,
         system=_continuation_prompt(subject),
