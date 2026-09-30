@@ -44,7 +44,7 @@ This plan builds the shared engine behind Q&A mode, story mode and the guardrail
 
 ### Group 4: Answering
 
-- [ ] 11. Question classifier
+- [x] 11. Question classifier
   - Short call to the visitor's model; returns label and confidence; low confidence becomes ambiguous
 - [ ] 12. Answer writer and citation builder
   - Prompt rules from the design; citations built from passage ids; drop and recheck when an id does not exist
