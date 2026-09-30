@@ -1,0 +1,142 @@
+.app {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 1rem;
+  font-family: system-ui, sans-serif;
+}
+
+.key-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.key-status .waking {
+  color: #b45309;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  background: white;
+  color: #111;
+  padding: 1.5rem;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 420px;
+}
+
+.field {
+  display: block;
+  margin-bottom: 0.85rem;
+}
+
+.field span {
+  display: block;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.field select,
+.field input {
+  width: 100%;
+  padding: 0.4rem;
+  box-sizing: border-box;
+}
+
+.key-field-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.key-field-row input {
+  flex: 1;
+}
+
+.inline-error {
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
+.disclosure {
+  font-size: 0.75rem;
+  color: #555;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.entry-screen,
+.qna-screen,
+.story-screen {
+  margin-top: 1rem;
+}
+
+.entry-screen form,
+.qna-screen form,
+.story-screen form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.entry-screen input,
+.qna-screen input,
+.story-screen input {
+  flex: 1;
+  padding: 0.5rem;
+}
+
+.path-selector {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.mode-switch {
+  margin-bottom: 1rem;
+}
+
+.citations {
+  font-size: 0.85rem;
+  color: #444;
+  padding-left: 1.2rem;
+}
+
+.picker-section {
+  margin: 1rem 0;
+}
+
+.picker-section button {
+  margin: 0.15rem;
+}
+
+.story-choices {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.loading {
+  font-style: italic;
+  color: #666;
+}
+
+.decline,
+.no-answer,
+.no-story {
+  font-style: italic;
+}

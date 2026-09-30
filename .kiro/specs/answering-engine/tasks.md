@@ -57,9 +57,9 @@ This plan builds the shared engine behind Q&A mode, story mode and the guardrail
 
 ### Group 5: Screens
 
-- [ ] 16. Q&A screen
+- [x] 16. Q&A screen
   - Question input, answer with citations, Tell Me More, switch to story mode, error and loading states as in the spec
-- [ ] 17. Story screen
+- [x] 17. Story screen
   - Story picker (typed request, characters, parvas, Surprise me), snippet with citation, the three choices, switch to Q&A
 - [ ] 18. Session context in the browser
   - Recent exchanges and shown stories kept in the tab, cleared on tab close
