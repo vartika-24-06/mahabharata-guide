@@ -26,7 +26,7 @@ This plan builds the shared engine behind Q&A mode, story mode and the guardrail
   - Real parser (`backend/ingest.py`) handles both section-marker formats found in the actual files (roman-numeral `SECTION <ROMAN>` in 11 books, bare arabic number in 7 books), extracts headers, cuts footnotes where present, strips `[1]`-style markers, and produces passages with parva/section/passage id
 - [x] 5. Completeness report
   - Confirms all 18 parvas present; logs every numbering gap/duplicate found (table in `docs/source-notes.md`) as an informational finding rather than a build-stopping error; flags any file that breaks the expected pattern entirely
-- [ ] 6. Build indexes
+- [x] 6. Build indexes
   - Build the local keyword (BM25) index from the passages
   - Provision a Supabase project with the pgvector extension; create the passages table (`parva`, `section`, `passage_id`, `text`, `embedding`)
   - Using our own embeddings-API key (not the visitor's), embed every real passage once and write the rows to Supabase
