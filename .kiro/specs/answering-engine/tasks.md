@@ -71,7 +71,7 @@ This plan builds the shared engine behind Q&A mode, story mode and the guardrail
   - Include at least one deliberate run with the embeddings API call forced to fail, to confirm the keyword-only fallback works end to end
 - [x] 20. Citation check
   - Automatic test that every citation names a real parva and section and a verbatim excerpt
-- [ ] 21. Redaction test for both keys
+- [x] 21. Redaction test for both keys
   - Confirm neither the visitor's key nor our own embeddings key appears in any log line, in both the normal and degraded (keyword-only) paths
 - [ ] 22. Deploy
   - Deploy to Render's free plan (no self-hosted model, so this should now fit comfortably); confirm real memory usage in production matches expectations
