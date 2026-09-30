@@ -50,7 +50,7 @@ This plan builds the shared engine behind Q&A mode, story mode and the guardrail
   - Prompt rules from the design; citations built from passage ids; drop and recheck when an id does not exist
 - [x] 13. Q&A endpoint
   - Short answers, ambiguous two-sentence format, Tell Me More, "no good answer" with related topics, follow-ups using context sent from the browser
-- [ ] 14. Story catalogue
+- [x] 14. Story catalogue
   - Build the Featured Characters and parva catalogue from the passages and review it by hand
 - [ ] 15. Story endpoint
   - Snippets of about 150 words, Tell Me More continues in order, "already know this one" picks another story, "Surprise me", shown stories sent from the browser
