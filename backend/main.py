@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 
 import guardrails
+import qna_endpoint
 import rate_limit
 import scope
 import search
@@ -51,47 +52,9 @@ async def health_check():
     }
 
 
-@app.get("/debug/search")
-async def debug_search(request: Request, q: str, k: int = 8, has_context: bool = False):
-    """Temporary manual-testing endpoint for Task 7's hybrid search,
-    Task 8's scope check and Task 9's guardrails, ahead of the real Q&A
-    endpoint (Task 13). Not part of the product surface - remove or gate
-    this once Task 13 lands. has_context is a manual override for
-    testing follow-up behavior; Task 19 (browser session context) will
-    wire this up for real."""
-    client_ip = rate_limit.get_client_ip(request)
-    rate_ok, rate_message = rate_limit.check_rate_limit(client_ip)
-    if not rate_ok:
-        return {"query": q, "in_scope": False, "message": rate_message}
-
-    guardrails_ok, guardrails_message = guardrails.check_guardrails(q)
-    if not guardrails_ok:
-        return {"query": q, "in_scope": False, "message": guardrails_message}
-
-    in_scope, decline_message = scope.check_scope(q, has_context=has_context)
-    if not in_scope:
-        return {"query": q, "in_scope": False, "message": decline_message}
-
-    results, degraded = search.hybrid_search(
-        query=q,
-        bm25_index=resources["bm25_index"],
-        openai_client=resources["openai_client"],
-        supabase_client=resources["supabase_client"],
-        k=k,
-    )
-    return {
-        "query": q,
-        "in_scope": True,
-        "meaning_search_degraded": degraded,
-        "results": [
-            {
-                "parva_name": r["meta"]["parva_name"],
-                "section": r["meta"]["section"],
-                "passage_index": r["meta"]["passage_index"],
-                "rrf_score": round(r["rrf_score"], 5),
-                "sources": r["sources"],
-                "text": r.get("text"),
-            }
-            for r in results
-        ],
-    }
+@app.post("/api/ask")
+async def ask(request: Request, body: qna_endpoint.AskRequest):
+    """Task 13: the real Q&A endpoint. See qna_endpoint.py for the full
+    pipeline (rate limit -> guardrails -> scope -> search -> classify ->
+    answer -> citations) and the header/error contract it follows."""
+    return await qna_endpoint.handle_ask(request, body, resources)

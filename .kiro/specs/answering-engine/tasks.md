@@ -48,7 +48,7 @@ This plan builds the shared engine behind Q&A mode, story mode and the guardrail
   - Short call to the visitor's model; returns label and confidence; low confidence becomes ambiguous
 - [x] 12. Answer writer and citation builder
   - Prompt rules from the design; citations built from passage ids; drop and recheck when an id does not exist
-- [ ] 13. Q&A endpoint
+- [x] 13. Q&A endpoint
   - Short answers, ambiguous two-sentence format, Tell Me More, "no good answer" with related topics, follow-ups using context sent from the browser
 - [ ] 14. Story catalogue
   - Build the Featured Characters and parva catalogue from the passages and review it by hand

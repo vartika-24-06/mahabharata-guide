@@ -62,6 +62,53 @@ Respond with ONLY a JSON object, no other text, no code fence:
 {{"factual_sentence": "<one sentence, the factual reading>", "factual_ids": [<passage numbers used>], "philosophical_sentence": "<one sentence, the philosophical reading>", "philosophical_ids": [<passage numbers used>]}}"""
 
 
+def _expand_prompt(label: str) -> str:
+    kind = "ambiguous" if label == "ambiguous" else label
+    return f"""You are expanding a short answer into fuller content for a {kind} question about the Mahabharata, using only the numbered passages provided. The reader already saw a short 3-5 sentence answer and asked to see more.
+
+{_BASE_RULES}
+
+Write about 150 to 250 words of fuller content: more of what the text actually says (more events, more of the reasoning, more of who said what), not just the short answer restated in different words.
+
+Respond with ONLY a JSON object, no other text, no code fence:
+{{"answer": "<150-250 word expanded answer>", "used_ids": [<passage numbers you actually drew on>]}}"""
+
+
+def write_full_answer(
+    provider: str,
+    api_key: str,
+    question: str,
+    label: str,
+    passages: list[dict],
+    model: str | None = None,
+) -> dict:
+    """Task 13 / qna-mode Requirement 7 (Tell Me More): same contract as
+    write_answer, but asks for fuller content on the same question rather
+    than a short answer - always a single {"answer", "used_ids"} shape,
+    even for a question originally classified ambiguous (Requirement
+    7.2: "the full relevant content covering both readings" is one piece
+    of expanded content, not two separate expansions)."""
+    if label not in ("factual", "philosophical", "ambiguous"):
+        raise ValueError(f"Unknown label: {label!r}")
+
+    context = _build_context_block(passages)
+    user_prompt = f"Question: {question}\n\nNumbered passages:\n{context}"
+
+    response_text = llm_client.complete(
+        provider=provider,
+        api_key=api_key,
+        system=_expand_prompt(label),
+        user=user_prompt,
+        model=model,
+        max_tokens=900,
+    )
+
+    try:
+        return llm_client.extract_json(response_text)
+    except (json.JSONDecodeError, ValueError):
+        return {}
+
+
 def write_answer(
     provider: str,
     api_key: str,
