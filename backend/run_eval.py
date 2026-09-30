@@ -218,6 +218,16 @@ def main():
                 # empty or invalid (raw_model_output shows what it said).
                 print(f"       [diagnostic] {result.get('num_passages', 0)} passages retrieved; "
                       f"model output: {result.get('raw_model_output')!r}")
+            elif "confidence" in result:
+                # A wrong-label mismatch (e.g. classifier said "factual"
+                # where the eval set expects "ambiguous") - print the
+                # classifier's own confidence and the answer text it
+                # produced, so you can judge by eye whether "actual" is a
+                # defensible reading (same question decision-log.md
+                # already made for eval-set rows 17/21/22/35) or a real
+                # classifier miss, without needing a second run.
+                print(f"       [diagnostic] classifier confidence {result['confidence']:.2f}; "
+                      f"answer: {result.get('message', '')!r}")
 
         if row_num in VERDICT_CHECK_ROWS and actual not in ("decline", "no_answer", "provider_error"):
             verdict_spotchecks.append((row_num, query, result.get("message", "")))
