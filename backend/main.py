@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
+import guardrails
 import scope
 import search
 
@@ -56,6 +57,10 @@ async def debug_search(q: str, k: int = 8, has_context: bool = False):
     part of the product surface - remove or gate this once Task 13 lands.
     has_context is a manual override for testing follow-up behavior;
     Task 19 (browser session context) will wire this up for real."""
+    guardrails_ok, guardrails_message = guardrails.check_guardrails(q)
+    if not guardrails_ok:
+        return {"query": q, "in_scope": False, "message": guardrails_message}
+
     in_scope, decline_message = scope.check_scope(q, has_context=has_context)
     if not in_scope:
         return {"query": q, "in_scope": False, "message": decline_message}

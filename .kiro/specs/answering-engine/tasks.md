@@ -38,7 +38,7 @@ This plan builds the shared engine behind Q&A mode, story mode and the guardrail
   - If the embeddings API call fails or rate-limits, fall back to keyword-only results for that request rather than failing (design.md Property 8 / Error Handling)
 - [x] 8. Scope check
   - Curated names, places, themes and spelling variants; follow-ups pass when there is conversation context; fixed one-line declines
-- [ ] 9. Rule-override, prompt-reveal and persona detection with fixed decline wording
+- [x] 9. Rule-override, prompt-reveal and persona detection with fixed decline wording
 - [ ] 10. Request rate limit per visitor, with a polite wait message
   - This limit also bounds how often our own embeddings key gets called per visitor — no separate budget limit needed for v1, but worth a basic usage check (see design.md "Open items")
 
