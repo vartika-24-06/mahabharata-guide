@@ -73,7 +73,7 @@ This plan builds the shared engine behind Q&A mode, story mode and the guardrail
   - Automatic test that every citation names a real parva and section and a verbatim excerpt
 - [x] 21. Redaction test for both keys
   - Confirm neither the visitor's key nor our own embeddings key appears in any log line, in both the normal and degraded (keyword-only) paths
-- [ ] 22. Deploy
+- [x] 22. Deploy
   - Deploy to Render's free plan (no self-hosted model, so this should now fit comfortably); confirm real memory usage in production matches expectations
   - Record the deployment outcome in `docs/decision-log.md`
 
