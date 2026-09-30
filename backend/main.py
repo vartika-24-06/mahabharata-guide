@@ -4,12 +4,16 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 
+import entry_middleware
 import guardrails
+import ping_endpoint
 import qna_endpoint
 import rate_limit
 import scope
 import search
+import session_token
 import story_endpoint
 
 BACKEND_DIR = Path(__file__).parent
@@ -55,6 +59,29 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Mahabharata Guide API", lifespan=lifespan)
 
+# Order matters: Starlette applies middleware in reverse of add order, so
+# ThrottleMiddleware (added second) runs first and can short-circuit a
+# throttled request before HeaderRedactionMiddleware even looks at it.
+app.add_middleware(entry_middleware.HeaderRedactionMiddleware)
+app.add_middleware(entry_middleware.ThrottleMiddleware)
+
+# Entry-screen design.md's CORS section - restricts the browser to the
+# deployed frontend origin(s) only. Update ALLOWED_ORIGINS with the real
+# Vercel URL once deployed (Task 22 / entry-screen deploy tasks).
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # local Vite dev server
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["X-Provider-Key", "X-Session-Token", "Content-Type"],
+    # entry-screen tasks.md amendment (Task 9): expose Retry-After so the
+    # frontend can read it off a 429 response cross-origin.
+    expose_headers=["Retry-After"],
+)
+
 
 @app.get("/health")
 async def health_check():
@@ -64,6 +91,18 @@ async def health_check():
         "catalogue_loaded": "catalogue" in resources,
         "supabase_connected": "supabase_client" in resources,
     }
+
+
+@app.post("/api/session-token")
+async def issue_session_token():
+    return {"session_token": session_token.issue_session_token()}
+
+
+@app.post("/api/ping")
+async def ping(request: Request, body: ping_endpoint.PingRequest):
+    """Entry-screen spec: validates a visitor's API key + model with a
+    minimal real completion request. See ping_endpoint.py."""
+    return await ping_endpoint.handle_ping(request, body)
 
 
 @app.post("/api/ask")

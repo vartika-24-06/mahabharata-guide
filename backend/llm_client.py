@@ -29,7 +29,7 @@ class LLMError(Exception):
         super().__init__(message)
 
 
-def _call_openai(api_key: str, model: str, system: str, user: str, max_tokens: int) -> str:
+def _call_openai(api_key: str, model: str, system: str, user: str, max_tokens: int, timeout: float) -> str:
     response = httpx.post(
         "https://api.openai.com/v1/chat/completions",
         headers={"Authorization": f"Bearer {api_key}"},
@@ -41,7 +41,7 @@ def _call_openai(api_key: str, model: str, system: str, user: str, max_tokens: i
             ],
             "max_completion_tokens": max_tokens,
         },
-        timeout=30,
+        timeout=timeout,
     )
     if response.status_code == 401:
         raise LLMError("auth", "OpenAI rejected this API key.")
@@ -55,7 +55,7 @@ def _call_openai(api_key: str, model: str, system: str, user: str, max_tokens: i
     return response.json()["choices"][0]["message"]["content"]
 
 
-def _call_anthropic(api_key: str, model: str, system: str, user: str, max_tokens: int) -> str:
+def _call_anthropic(api_key: str, model: str, system: str, user: str, max_tokens: int, timeout: float) -> str:
     response = httpx.post(
         "https://api.anthropic.com/v1/messages",
         headers={
@@ -68,7 +68,7 @@ def _call_anthropic(api_key: str, model: str, system: str, user: str, max_tokens
             "system": system,
             "messages": [{"role": "user", "content": user}],
         },
-        timeout=30,
+        timeout=timeout,
     )
     if response.status_code in (401, 403):
         raise LLMError("auth", "Anthropic rejected this API key.")
@@ -82,7 +82,7 @@ def _call_anthropic(api_key: str, model: str, system: str, user: str, max_tokens
     return response.json()["content"][0]["text"]
 
 
-def _call_gemini(api_key: str, model: str, system: str, user: str, max_tokens: int) -> str:
+def _call_gemini(api_key: str, model: str, system: str, user: str, max_tokens: int, timeout: float) -> str:
     response = httpx.post(
         f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
         headers={"x-goog-api-key": api_key},
@@ -91,7 +91,7 @@ def _call_gemini(api_key: str, model: str, system: str, user: str, max_tokens: i
             "contents": [{"parts": [{"text": user}]}],
             "generationConfig": {"maxOutputTokens": max_tokens},
         },
-        timeout=30,
+        timeout=timeout,
     )
     if response.status_code == 400:
         raise LLMError("auth", "Gemini rejected this API key.")
@@ -121,16 +121,24 @@ _PROVIDER_FUNCS = {
 
 
 def complete(provider: str, api_key: str, system: str, user: str,
-             model: str | None = None, max_tokens: int = 800) -> str:
+             model: str | None = None, max_tokens: int = 800,
+             timeout: float = 30) -> str:
     """Calls the visitor's chosen provider with their own key. Raises
     LLMError (kind: auth/unknown_model/rate_limit/other) on failure -
     callers should catch this and show the visitor a plain message,
-    never the raw provider error (which could leak key-shaped details)."""
+    never the raw provider error (which could leak key-shaped details).
+    Raw httpx exceptions (timeout, connection failure) are NOT caught
+    here - they're about reaching the provider at all rather than what
+    it said, so callers that need a distinct network/timeout response
+    (entry-screen's /api/ping) catch httpx.TimeoutException /
+    httpx.RequestError themselves. timeout defaults to 30s (Q&A/story
+    answers can be slower); /api/ping passes 10s per the entry-screen
+    spec's own validation timeout."""
     if provider not in _PROVIDER_FUNCS:
         raise LLMError("other", f"Unknown provider '{provider}'. "
                         f"Expected one of: {', '.join(_PROVIDER_FUNCS)}.")
     model = model or DEFAULT_MODELS[provider]
-    return _PROVIDER_FUNCS[provider](api_key, model, system, user, max_tokens)
+    return _PROVIDER_FUNCS[provider](api_key, model, system, user, max_tokens, timeout)
 
 
 def extract_json(text: str) -> dict:

@@ -146,7 +146,11 @@ def _snippet_response(story_id: str, subject: str, raw: dict, passages: list[dic
 
 
 async def handle_story(request: Request, body: StoryRequest, resources: dict) -> JSONResponse:
-    provider_key = request.headers.get("x-provider-key", "")
+    # HeaderRedactionMiddleware strips this header before any route
+    # handler runs (so it can never end up in a log line) and stashes
+    # it on request.state instead - see entry_middleware.py. Falls back
+    # to the raw header for callers/tests that bypass that middleware.
+    provider_key = getattr(request.state, "provider_key", None) or request.headers.get("x-provider-key", "")
     if not provider_key:
         return _error(400, "missing_key", "API key must be provided")
     if not body.provider:
