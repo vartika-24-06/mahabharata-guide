@@ -4,6 +4,7 @@ import type { Citation, StoryResponse } from "../api/client";
 import { requestStory } from "../api/client";
 import { useValidationState } from "../state/ValidationStateContext";
 import type { PendingInput } from "../state/ValidationStateContext";
+import { useSessionContext } from "../state/SessionContextProvider";
 import { FEATURED_CHARACTERS, PARVAS, displayParvaName } from "../storyCatalogue";
 
 /** Task 17: Story screen. Picker (typed/characters/parvas/surprise),
@@ -17,13 +18,16 @@ export function StoryScreen({
   onSwitchToQnA: () => void;
 }) {
   const { validatedKey, invalidateKeyOnAuthError } = useValidationState();
+  // story-mode Requirement 8.4: kept across a switch to Q&A mode and
+  // back, so this comes from the session-lasting context, not local
+  // state that would reset every time this screen unmounts.
+  const { shownStories, addShownStory } = useSessionContext();
   const [typedText, setTypedText] = useState(initialInput.mode === "story" ? initialInput.text : "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [story, setStory] = useState<StoryResponse | null>(null);
   const [currentSubject, setCurrentSubject] = useState<string | null>(null);
   const [currentEpisode, setCurrentEpisode] = useState<number | null>(null);
-  const [shownStories, setShownStories] = useState<string[]>([]);
   const [startedOnMount, setStartedOnMount] = useState(false);
 
   const sessionToken = safeSessionToken();
@@ -65,7 +69,7 @@ export function StoryScreen({
       const { subject, story_id: storyId } = result.data;
       setCurrentSubject(subject);
       setCurrentEpisode(Number(storyId.split("#").pop()));
-      setShownStories((s) => [...s, storyId]);
+      addShownStory(storyId);
     }
   }
 

@@ -1,12 +1,10 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import type { AskExchange, AskResponse, Citation } from "../api/client";
+import type { AskResponse, Citation } from "../api/client";
 import { askQuestion } from "../api/client";
 import { useValidationState } from "../state/ValidationStateContext";
 import type { PendingInput } from "../state/ValidationStateContext";
-
-// qna-mode Requirement 8.2: the last three exchanges only.
-const MAX_CONTEXT_EXCHANGES = 3;
+import { useSessionContext } from "../state/SessionContextProvider";
 
 function CitationList({ citations }: { citations: Citation[] }) {
   if (citations.length === 0) return null;
@@ -33,6 +31,10 @@ export function QnAScreen({
   onSwitchToStory: () => void;
 }) {
   const { validatedKey, invalidateKeyOnAuthError } = useValidationState();
+  // qna-mode Requirement 8.4: kept across a switch to story mode and
+  // back, so this comes from the session-lasting context, not local
+  // state that would reset every time this screen unmounts.
+  const { recentExchanges, addExchange } = useSessionContext();
   const [question, setQuestion] = useState(initialInput.text);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +42,6 @@ export function QnAScreen({
   const [label, setLabel] = useState<string | undefined>(undefined);
   const [expanded, setExpanded] = useState<AskResponse | null>(null);
   const [expandLoading, setExpandLoading] = useState(false);
-  const [history, setHistory] = useState<AskExchange[]>([]);
   const [askedOnMount, setAskedOnMount] = useState(false);
 
   const sessionToken = safeSessionToken();
@@ -59,7 +60,7 @@ export function QnAScreen({
       question: q,
       expand: opts.expand,
       label: opts.useLabel,
-      context: history.slice(-MAX_CONTEXT_EXCHANGES),
+      context: recentExchanges,
     });
 
     if (opts.expand) setExpandLoading(false);
@@ -89,7 +90,7 @@ export function QnAScreen({
     } else if (result.data.type === "ambiguous") {
       setLabel("ambiguous");
     }
-    setHistory((h) => [...h, { question: q, type: result.data.type }]);
+    addExchange({ question: q, type: result.data.type });
   }
 
   // qna-mode Requirement 1.1: a request handed off from the entry screen

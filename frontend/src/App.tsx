@@ -6,6 +6,7 @@ import { QnAScreen } from "./screens/QnAScreen";
 import { StoryScreen } from "./screens/StoryScreen";
 import type { PendingInput } from "./state/ValidationStateContext";
 import { ValidationStateProvider } from "./state/ValidationStateContext";
+import { SessionContextProvider } from "./state/SessionContextProvider";
 import { useSessionToken } from "./state/useSessionToken";
 import "./App.css";
 
@@ -27,7 +28,9 @@ export default function App() {
 
   return (
     <ValidationStateProvider onReady={handleReady}>
-      <AppShell screen={screen} setScreen={setScreen} />
+      <SessionContextProvider>
+        <AppShell screen={screen} setScreen={setScreen} />
+      </SessionContextProvider>
     </ValidationStateProvider>
   );
 }
