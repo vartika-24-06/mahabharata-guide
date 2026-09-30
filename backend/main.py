@@ -1,63 +1,77 @@
+import os
 from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI
-from sentence_transformers import SentenceTransformer, CrossEncoder
-from timing_utils import benchmark_search_pipeline, get_process_memory_mb
 
-# Global model references
-models = {}
+import search
 
-DUMMY_PASSAGES = [
-    "The Mahabharata is one of the two major Sanskrit epics of ancient India, narrated by the sage Vyasa. It details the struggle between two groups of cousins in the Kurukshetra War.",
-    "Arjuna was the third of the five Pandava brothers, renowned for his unrivaled archery skills and commitment to righteousness. He played a central role in defeating the Kaurava army.",
-    "Lord Krishna served as Arjuna's divine charioteer during the great Kurukshetra war and imparted the eternal spiritual wisdom of the Bhagavad Gita on the battlefield.",
-    "Yudhishthira, the eldest Pandava prince, was famous for his strict adherence to truth and righteousness, earning him the title of Dharma-raja.",
-    "Bhishma was the grand sire of both Pandavas and Kauravas, bound by a formidable vow of celibacy and lifetime loyalty to the throne of Hastinapura.",
-    "Karna was a tragic hero and legendary archer known for his boundless generosity, loyalty to Duryodhana, and possession of divine armor.",
-    "Draupadi was the common wife of the five Pandava brothers, born from a sacred altar fire, whose insult in the Kaurava court sparked the epic feud.",
-    "Duryodhana was the crown prince of Hastinapura and the chief antagonist among the one hundred Kaurava brothers who fought fiercely against the Pandavas.",
-    "The Kurukshetra War lasted eighteen days on the sacred field of Kurukshetra, resulting in immense carnage and the downfall of numerous ancient dynasties.",
-    "Abhimanyu, the courageous son of Arjuna and Subhadra, heroically penetrated the complex Chakravyuha formation before being overwhelmed by enemy warriors."
-]
+BACKEND_DIR = Path(__file__).parent
 
-SAMPLE_QUESTION = "What was Arjuna's role in the Kurukshetra war?"
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BACKEND_DIR / ".env")
+except ImportError:
+    pass
+
+resources = {}
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Load embedding model and re-ranker on startup
-    print("Loading embedding model (sentence-transformers/all-MiniLM-L6-v2)...")
-    models["embedder"] = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-    print("Loading re-ranker model (cross-encoder/ms-marco-MiniLM-L-6-v2)...")
-    models["reranker"] = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
-    models["idle_memory_mb"] = get_process_memory_mb()
-    print(f"Models loaded successfully. Idle memory: {models['idle_memory_mb']:.2f} MB")
+    print("Loading BM25 keyword index...")
+    resources["bm25_index"] = search.load_bm25_index()
+
+    print("Connecting to Supabase and OpenAI (our own embeddings key)...")
+    import openai
+    from supabase import create_client
+
+    resources["openai_client"] = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    resources["supabase_client"] = create_client(
+        os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"]
+    )
+    print("Startup complete - no ML model loaded in this process "
+          "(see docs/hosting-notes.md for why).")
     yield
-    models.clear()
+    resources.clear()
+
 
 app = FastAPI(title="Mahabharata Guide API", lifespan=lifespan)
 
+
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "models_loaded": "embedder" in models and "reranker" in models}
+    return {
+        "status": "ok",
+        "bm25_loaded": "bm25_index" in resources,
+        "supabase_connected": "supabase_client" in resources,
+    }
 
-# Temporary test endpoint disabled after recording feasibility benchmark metrics
-FEASIBILITY_TEST_ENABLED = False
 
-@app.get("/test-feasibility")
-async def test_feasibility():
-    if not FEASIBILITY_TEST_ENABLED:
-        return {"error": "Feasibility test endpoint is disabled."}
-    
-    embedder = models.get("embedder")
-    reranker = models.get("reranker")
-    
-    if not embedder or not reranker:
-        return {"error": "Models not loaded."}
-        
-    results = benchmark_search_pipeline(
-        embedder=embedder,
-        reranker=reranker,
-        passages=DUMMY_PASSAGES,
-        question=SAMPLE_QUESTION,
-        num_runs=5
+@app.get("/debug/search")
+async def debug_search(q: str, k: int = 8):
+    """Temporary manual-testing endpoint for Task 7's hybrid search,
+    ahead of the real Q&A endpoint (Task 13). Not part of the product
+    surface - remove or gate this once Task 13 lands."""
+    results, degraded = search.hybrid_search(
+        query=q,
+        bm25_index=resources["bm25_index"],
+        openai_client=resources["openai_client"],
+        supabase_client=resources["supabase_client"],
+        k=k,
     )
-    return results
+    return {
+        "query": q,
+        "meaning_search_degraded": degraded,
+        "results": [
+            {
+                "parva_name": r["meta"]["parva_name"],
+                "section": r["meta"]["section"],
+                "passage_index": r["meta"]["passage_index"],
+                "rrf_score": round(r["rrf_score"], 5),
+                "sources": r["sources"],
+                "text": r.get("text"),
+            }
+            for r in results
+        ],
+    }

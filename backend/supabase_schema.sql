@@ -18,12 +18,39 @@ create table if not exists passages (
 
 -- Speeds up similarity search once the table is populated.
 -- ivfflat needs at least a few hundred rows to build well, so run this
--- AFTER push_to_supabase.py has inserted all passages, not before.
+-- AFTER push_to_supabase.py has inserted all passages, not before. If
+-- this errors with "memory required is X MB, maintenance_work_mem is
+-- 32MB", run `SET maintenance_work_mem = '64MB';` first (session-only,
+-- doesn't change anything permanently).
 -- create index on passages using ivfflat (embedding vector_cosine_ops) with (lists = 100);
 
--- Example similarity query the backend will run at request time
--- (replace :query_embedding with the embedded incoming question):
--- select parva_name, section, text, 1 - (embedding <=> :query_embedding) as similarity
--- from passages
--- order by embedding <=> :query_embedding
--- limit 8;
+-- Task 7: the backend calls this function (via supabase-py's .rpc(),
+-- see backend/search.py's vector_search()) rather than running a raw
+-- SQL query - PostgREST (what supabase-py talks to) doesn't support
+-- ordering by an arbitrary operator expression like `<=>` directly, so
+-- the query lives here as a stored function instead. Run this once,
+-- after the table exists (order relative to the ivfflat index above
+-- doesn't matter).
+create or replace function match_passages(
+    query_embedding vector(768),
+    match_count int default 8
+)
+returns table (
+    id bigint,
+    parva_file text,
+    book_number int,
+    parva_name text,
+    section int,
+    passage_index int,
+    text text,
+    similarity float
+)
+language sql stable
+as $$
+    select
+        id, parva_file, book_number, parva_name, section, passage_index, text,
+        1 - (embedding <=> query_embedding) as similarity
+    from passages
+    order by embedding <=> query_embedding
+    limit match_count;
+$$;
