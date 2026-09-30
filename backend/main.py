@@ -1,5 +1,6 @@
 import json
 import os
+import resource
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -85,11 +86,17 @@ app.add_middleware(
 
 @app.get("/health")
 async def health_check():
+    # Task 22 (deploy): confirm real memory usage matches expectations
+    # now that there's no self-hosted model, without needing Render's
+    # own Metrics graphs (gated behind a paid plan). ru_maxrss is peak
+    # resident memory since process start, in KB on Linux (Render's
+    # runtime) - stdlib only, no extra dependency.
     return {
         "status": "ok",
         "bm25_loaded": "bm25_index" in resources,
         "catalogue_loaded": "catalogue" in resources,
         "supabase_connected": "supabase_client" in resources,
+        "peak_memory_mb": round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 1),
     }
 
 
