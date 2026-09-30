@@ -67,10 +67,10 @@ app.add_middleware(entry_middleware.HeaderRedactionMiddleware)
 app.add_middleware(entry_middleware.ThrottleMiddleware)
 
 # Entry-screen design.md's CORS section - restricts the browser to the
-# deployed frontend origin(s) only. Update ALLOWED_ORIGINS with the real
-# Vercel URL once deployed (Task 22 / entry-screen deploy tasks).
+# deployed frontend origin(s) only.
 ALLOWED_ORIGINS = [
     "http://localhost:5173",  # local Vite dev server
+    "https://mahabharata-guide.vercel.app",  # deployed frontend (Task 22)
 ]
 app.add_middleware(
     CORSMiddleware,
