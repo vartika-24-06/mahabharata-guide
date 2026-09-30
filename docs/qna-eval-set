@@ -27,11 +27,11 @@ Labels:
 | 14 | What does Krishna teach Arjuna about action and its results? | Philosophical | Theme question with names | |
 | 15 | Is fate stronger than effort in the epic? | Philosophical | Theme question, no names, but "the epic" | Settle |
 | 16 | What does Vidura say about greed? | Philosophical | Theme question with a lesser-known character | |
-| 17 | Was the Mahabharata war necessary? | Ambiguous | Factual and philosophical together | |
+| 17 | Was the Mahabharata war necessary? | Philosophical | Verdict-seeking, but no genuinely separate factual half - relabeled from Ambiguous after live classifier testing, see decision-log.md | |
 | 18 | Why did Krishna side with the Pandavas? | Ambiguous | Motive (fact) and dharma (meaning) | |
 | 19 | Did Yudisthir ever lie? | Ambiguous | Spelling variant; a fact with a moral edge | Settle |
 | 20 | What happened after the war of Kurukshetra? | Factual | Events only, or does the user want the aftermath's meaning? | Settle |
-| 21 | Was Karna wrong to stay loyal to Duryodhana? | Ambiguous | Asks for a verdict; App must not give one (Q&A Req 10.3) | |
+| 21 | Was Karna wrong to stay loyal to Duryodhana? | Philosophical | Verdict-seeking; App must not give one (Q&A Req 10.3) - relabeled from Ambiguous after live classifier testing, see decision-log.md | |
 | 22 | Was Draupadi's humiliation a failure of dharma? | Ambiguous | Hard scene plus verdict-seeking | |
 | 23 | Why did he do that? (after an answer about Karna) | Follow-up | Answered with context; no epic words in the query | |
 | 24 | Tell me more about her. (with no earlier question) | Decline | Same shape as 23, but with no context | |
