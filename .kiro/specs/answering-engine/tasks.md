@@ -66,8 +66,8 @@ This plan builds the shared engine behind Q&A mode, story mode and the guardrail
 
 ### Group 6: Evaluation and launch
 
-- [ ] 19. Eval runner
-  - Run all queries in `docs/qa-eval-set.md`, record the outcome, produce the confusion table
+- [x] 19. Eval runner
+  - Run all queries in `docs/qna-eval-set`, record the outcome, produce the confusion table
   - Include at least one deliberate run with the embeddings API call forced to fail, to confirm the keyword-only fallback works end to end
 - [ ] 20. Citation check
   - Automatic test that every citation names a real parva and section and a verbatim excerpt
