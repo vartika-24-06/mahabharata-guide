@@ -240,7 +240,11 @@ def process_file(path: Path) -> tuple[ParvaReport, list[Passage]]:
 def main():
     raw_dir = Path(__file__).parent.parent / "data_raw"
     if not raw_dir.exists():
-        raw_dir = Path("/home/claude/mahabharata-guide/data_raw")
+        raise SystemExit(
+            f"Could not find the source text folder at {raw_dir}. "
+            "Make sure the 18 maha*.txt files are extracted into a "
+            "data_raw/ folder at the repo root (next to backend/)."
+        )
 
     all_reports = []
     all_passages = []
