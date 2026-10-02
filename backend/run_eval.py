@@ -140,6 +140,9 @@ def run_one(question: str, has_context: bool, provider: str, api_key: str, model
         # qna_endpoint.py's _retry_with_rewritten_query so this eval
         # measures the SAME behavior production actually has.
         rewritten = query_rewrite.rewrite_query(provider, api_key, question, model)
+        retry_num_passages = None
+        retry_passage_summaries = None
+        retry_raw_model_output = None
         if rewritten:
             retry_passages, retry_degraded = search.hybrid_search(
                 query=rewritten,
@@ -147,10 +150,19 @@ def run_one(question: str, has_context: bool, provider: str, api_key: str, model
                 openai_client=resources["openai_client"],
                 supabase_client=resources["supabase_client"],
             )
+            # So a still-failing row can show WHICH passages the retry
+            # search actually came back with (e.g. to check by eye
+            # whether the real answer passage is in there at all, or
+            # the retry search itself missed it).
+            retry_num_passages = len(retry_passages)
+            retry_passage_summaries = [
+                f"{p['meta']['parva_name']} §{p['meta']['section']}" for p in retry_passages
+            ]
             try:
                 retry_raw = answer.write_answer(provider, api_key, question, label, retry_passages, model)
-            except llm_client.LLMError:
-                retry_raw = {}
+            except llm_client.LLMError as e:
+                retry_raw = {"provider_error": f"{e.kind}: {e}"}
+            retry_raw_model_output = retry_raw
             if label == "ambiguous":
                 retry_citations = answer.build_citations(retry_raw.get("factual_ids"), retry_passages) + \
                     answer.build_citations(retry_raw.get("philosophical_ids"), retry_passages)
@@ -169,11 +181,16 @@ def run_one(question: str, has_context: bool, provider: str, api_key: str, model
         # Those are two different problems to chase - the confusion table
         # alone can't tell them apart. rewritten_query is None when the
         # rewrite call itself failed/came back empty, vs. a string when
-        # it ran but still didn't find a usable passage - also worth
-        # telling apart by eye.
+        # it ran but still didn't find a usable passage. retry_* fields
+        # are None unless a rewrite retry actually ran, so a still-
+        # failing row shows exactly where it failed: no rewrite at all,
+        # rewrite ran but retry search missed the passage (check
+        # retry_passages by eye), or retry search found it but the
+        # model still didn't cite it (check retry_raw_model_output).
         return {"actual": "no_answer", "reason": "no_citations", "message": text, "degraded": degraded,
                 "confidence": classification["confidence"], "num_passages": len(passages), "raw_model_output": raw,
-                "rewritten_query": rewritten}
+                "rewritten_query": rewritten, "retry_num_passages": retry_num_passages,
+                "retry_passages": retry_passage_summaries, "retry_raw_model_output": retry_raw_model_output}
 
     return {"actual": label, "message": text, "degraded": degraded, "confidence": classification["confidence"],
             "query_rewritten": False}
@@ -259,6 +276,13 @@ def main():
                 print(f"       [diagnostic] {result.get('num_passages', 0)} passages retrieved; "
                       f"model output: {result.get('raw_model_output')!r}; "
                       f"rewrite tried: {result.get('rewritten_query')!r}")
+                if result.get("rewritten_query"):
+                    # The rewrite ran and searched again but still ended
+                    # up no_answer - show exactly where: did the retry
+                    # search even retrieve the real answer passage?
+                    print(f"       [diagnostic] retry search retrieved {result.get('retry_num_passages')} "
+                          f"passages: {result.get('retry_passages')}")
+                    print(f"       [diagnostic] retry model output: {result.get('retry_raw_model_output')!r}")
             elif "confidence" in result:
                 # A wrong-label mismatch (e.g. classifier said "factual"
                 # where the eval set expects "ambiguous") - print the
