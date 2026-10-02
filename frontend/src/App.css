@@ -39,7 +39,7 @@
   display: flex;
   align-items: baseline;
   gap: 1rem;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
 }
 
 .header-links a {
@@ -183,6 +183,8 @@ select:focus {
   border: 1px solid var(--border);
   width: 100%;
   max-width: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
 }
 
 .modal h2 {
@@ -191,6 +193,13 @@ select:focus {
 
 .modal-wide {
   max-width: 540px;
+}
+
+.how-it-works-intro {
+  font-size: 0.9rem;
+  color: var(--ink-muted);
+  max-width: none;
+  margin: 0 0 1.5rem;
 }
 
 .how-it-works-steps section {
