@@ -1,10 +1,19 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { AskResponse, Citation } from "../api/client";
 import { askQuestion } from "../api/client";
 import { useValidationState } from "../state/ValidationStateContext";
-import type { PendingInput } from "../state/ValidationStateContext";
+import type { RunRequest } from "../state/ValidationStateContext";
 import { useSessionContext } from "../state/SessionContextProvider";
+
+// Pulled from docs/qna-eval-set (unflagged Philosophical rows 12-14) -
+// guaranteed to classify correctly, so a first-time visitor's first
+// answer is a confident one, not an edge case.
+const EXAMPLE_PROMPTS = [
+  "What does Krishna teach Arjuna about action and its results?",
+  "What does the Mahabharata say about duty?",
+  "Why did Karna suffer so much?",
+];
 
 function CitationList({ citations }: { citations: Citation[] }) {
   if (citations.length === 0) return null;
@@ -21,28 +30,24 @@ function CitationList({ citations }: { citations: Citation[] }) {
 }
 
 /** Task 16: Q&A screen. Question input, answer with citations, Tell Me
- * More, error/loading states, switch to story mode (qna-mode
- * Requirements 1-11). */
-export function QnAScreen({
-  initialInput,
-  onSwitchToStory,
-}: {
-  initialInput: PendingInput;
-  onSwitchToStory: () => void;
-}) {
-  const { validatedKey, invalidateKeyOnAuthError } = useValidationState();
+ * More, error/loading states (qna-mode Requirements 1-11). Mode
+ * switching now happens via the persistent tab bar in App.tsx, not a
+ * button on this screen - this screen stays mounted whichever tab is
+ * active, so its state survives a switch away and back. */
+export function QnAScreen({ runRequest }: { runRequest: RunRequest | null }) {
+  const { validatedKey, invalidateKeyOnAuthError, setPendingInput } = useValidationState();
   // qna-mode Requirement 8.4: kept across a switch to story mode and
   // back, so this comes from the session-lasting context, not local
   // state that would reset every time this screen unmounts.
   const { recentExchanges, addExchange } = useSessionContext();
-  const [question, setQuestion] = useState(initialInput.text);
+  const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [answer, setAnswer] = useState<AskResponse | null>(null);
   const [label, setLabel] = useState<string | undefined>(undefined);
   const [expanded, setExpanded] = useState<AskResponse | null>(null);
   const [expandLoading, setExpandLoading] = useState(false);
-  const [askedOnMount, setAskedOnMount] = useState(false);
+  const lastHandledNonce = useRef<number | null>(null);
 
   const sessionToken = safeSessionToken();
 
@@ -93,26 +98,34 @@ export function QnAScreen({
     addExchange({ question: q, type: result.data.type });
   }
 
-  // qna-mode Requirement 1.1: a request handed off from the entry screen
-  // answers immediately, without making the user resubmit.
-  if (!askedOnMount && initialInput.text) {
-    setAskedOnMount(true);
-    runAsk(initialInput.text);
+  // A key just became available for a request made from this tab
+  // (either it was already validated and this fires immediately, or
+  // the Key Modal just succeeded) - run it now.
+  useEffect(() => {
+    if (!runRequest || runRequest.nonce === lastHandledNonce.current) return;
+    lastHandledNonce.current = runRequest.nonce;
+    setQuestion(runRequest.input.text);
+    runAsk(runRequest.input.text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runRequest]);
+
+  function submitQuestion(text: string) {
+    const q = text.trim();
+    if (!q) return;
+    setQuestion(q);
+    if (validatedKey) runAsk(q);
+    else setPendingInput({ text: q, mode: "qna" });
   }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (question.trim()) runAsk(question.trim());
+    submitQuestion(question);
   }
+
+  const showExamplePrompts = !loading && !answer && !question.trim();
 
   return (
     <div className="qna-screen">
-      <div className="mode-switch">
-        <button type="button" className="btn-ghost" onClick={onSwitchToStory}>
-          Hear a Story instead
-        </button>
-      </div>
-
       <form onSubmit={handleSubmit}>
         <input
           type="text"
@@ -124,6 +137,17 @@ export function QnAScreen({
           Ask
         </button>
       </form>
+
+      {showExamplePrompts && (
+        <div className="example-prompts">
+          <p className="example-prompts-label">Try asking:</p>
+          {EXAMPLE_PROMPTS.map((prompt) => (
+            <button key={prompt} type="button" onClick={() => submitQuestion(prompt)}>
+              {prompt}
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading && <p className="loading">Thinking...</p>}
       {error && (

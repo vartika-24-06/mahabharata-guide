@@ -1,34 +1,34 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { Citation, StoryResponse } from "../api/client";
 import { requestStory } from "../api/client";
 import { useValidationState } from "../state/ValidationStateContext";
-import type { PendingInput } from "../state/ValidationStateContext";
+import type { RunRequest } from "../state/ValidationStateContext";
 import { useSessionContext } from "../state/SessionContextProvider";
 import { FEATURED_CHARACTERS, PARVAS, displayParvaName } from "../storyCatalogue";
 
+type PresetType = "character" | "parva" | "surprise";
+
 /** Task 17: Story screen. Picker (typed/characters/parvas/surprise),
  * snippet with citation, the three post-snippet choices, switch to Q&A
- * (story-mode Requirements 1-11). */
-export function StoryScreen({
-  initialInput,
-  onSwitchToQnA,
-}: {
-  initialInput: PendingInput;
-  onSwitchToQnA: () => void;
-}) {
-  const { validatedKey, invalidateKeyOnAuthError } = useValidationState();
-  // story-mode Requirement 8.4: kept across a switch to Q&A mode and
-  // back, so this comes from the session-lasting context, not local
-  // state that would reset every time this screen unmounts.
+ * (story-mode Requirements 1-11). Mode switching now happens via the
+ * persistent tab bar in App.tsx. The presets stay visible at all times
+ * (not just before a story is picked) so the tab's range of characters
+ * and parvas is discoverable even mid-story, and doubles as the way
+ * back to a new one - there's no separate "pick again" button. */
+export function StoryScreen({ runRequest }: { runRequest: RunRequest | null }) {
+  const { validatedKey, invalidateKeyOnAuthError, setPendingInput } = useValidationState();
+  // story-mode Requirement 8.4: kept across a switch to Q&A and back,
+  // so this comes from the session-lasting context, not local state
+  // that would reset every time this screen unmounts.
   const { shownStories, addShownStory } = useSessionContext();
-  const [typedText, setTypedText] = useState(initialInput.mode === "story" ? initialInput.text : "");
+  const [typedText, setTypedText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [story, setStory] = useState<StoryResponse | null>(null);
   const [currentSubject, setCurrentSubject] = useState<string | null>(null);
   const [currentEpisode, setCurrentEpisode] = useState<number | null>(null);
-  const [startedOnMount, setStartedOnMount] = useState(false);
+  const lastHandledNonce = useRef<number | null>(null);
 
   const sessionToken = safeSessionToken();
 
@@ -73,63 +73,71 @@ export function StoryScreen({
     }
   }
 
-  if (!startedOnMount && initialInput.mode === "story" && initialInput.text) {
-    setStartedOnMount(true);
-    run("typed", { text: initialInput.text });
+  // A key just became available for a request made from this tab
+  // (typed text or a preset chip) - replay it now.
+  useEffect(() => {
+    if (!runRequest || runRequest.nonce === lastHandledNonce.current) return;
+    lastHandledNonce.current = runRequest.nonce;
+    const { input } = runRequest;
+    if (input.storyAction) {
+      run(input.storyAction.requestType, { subject: input.storyAction.subject });
+    } else {
+      setTypedText(input.text);
+      run("typed", { text: input.text });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runRequest]);
+
+  function requestPreset(requestType: PresetType, subject?: string) {
+    if (validatedKey) run(requestType, { subject });
+    else setPendingInput({ text: "", mode: "story", storyAction: { requestType, subject } });
   }
 
   function submitTyped(e: FormEvent) {
     e.preventDefault();
-    if (typedText.trim()) run("typed", { text: typedText.trim() });
+    const t = typedText.trim();
+    if (!t) return;
+    if (validatedKey) run("typed", { text: t });
+    else setPendingInput({ text: t, mode: "story" });
   }
-
-  const showPicker = !story || story.type === "no_other_story" || story.type === "decline";
 
   return (
     <div className="story-screen">
-      <div className="mode-switch">
-        <button type="button" className="btn-ghost" onClick={onSwitchToQnA}>
-          Ask a Question instead
+      <div className="story-picker">
+        <form onSubmit={submitTyped}>
+          <input
+            type="text"
+            value={typedText}
+            onChange={(e) => setTypedText(e.target.value)}
+            placeholder="Tell me a story about..."
+          />
+          <button type="submit" className="btn-primary" disabled={loading}>
+            Go
+          </button>
+        </form>
+
+        <div className="picker-section">
+          <h3>Characters</h3>
+          {FEATURED_CHARACTERS.map((name) => (
+            <button key={name} type="button" onClick={() => requestPreset("character", name)}>
+              {name}
+            </button>
+          ))}
+        </div>
+
+        <div className="picker-section">
+          <h3>Parvas</h3>
+          {PARVAS.map((name) => (
+            <button key={name} type="button" onClick={() => requestPreset("parva", name)}>
+              {displayParvaName(name)}
+            </button>
+          ))}
+        </div>
+
+        <button type="button" onClick={() => requestPreset("surprise")} disabled={loading}>
+          Surprise me
         </button>
       </div>
-
-      {showPicker && (
-        <div className="story-picker">
-          <form onSubmit={submitTyped}>
-            <input
-              type="text"
-              value={typedText}
-              onChange={(e) => setTypedText(e.target.value)}
-              placeholder="Tell me a story about..."
-            />
-            <button type="submit" className="btn-primary" disabled={loading}>
-              Go
-            </button>
-          </form>
-
-          <div className="picker-section">
-            <h3>Characters</h3>
-            {FEATURED_CHARACTERS.map((name) => (
-              <button key={name} type="button" onClick={() => run("character", { subject: name })}>
-                {name}
-              </button>
-            ))}
-          </div>
-
-          <div className="picker-section">
-            <h3>Parvas</h3>
-            {PARVAS.map((name) => (
-              <button key={name} type="button" onClick={() => run("parva", { subject: name })}>
-                {displayParvaName(name)}
-              </button>
-            ))}
-          </div>
-
-          <button type="button" onClick={() => run("surprise")} disabled={loading}>
-            Surprise me
-          </button>
-        </div>
-      )}
 
       {loading && <p className="loading">Preparing the story...</p>}
       {error && (
@@ -161,9 +169,6 @@ export function StoryScreen({
             onClick={() => run("another", { subject: currentSubject!, episodeIndex: currentEpisode! })}
           >
             I already know this one
-          </button>
-          <button type="button" onClick={() => setStory(null)}>
-            A new character or parva
           </button>
         </div>
       )}

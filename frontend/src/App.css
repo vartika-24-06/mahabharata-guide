@@ -167,27 +167,51 @@ select:focus {
   margin-top: 1.25rem;
 }
 
+/* ---- Tabs: the persistent top-level choice between modes. Plain
+   text-on-text, no pill/card chrome - the active tab is marked by
+   weight, heading color and a rule underneath it, not a filled
+   background, so it reads as a quiet navigational fact rather than a
+   UI widget bolted onto the page. ---- */
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+
+.tab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 0.7rem 0.5rem;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.tab:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: transparent;
+}
+
+.tab.tab-active {
+  color: var(--ink-heading);
+  border-bottom-color: var(--accent);
+}
+
+.tab.tab-active:hover {
+  color: var(--ink-heading);
+}
+
 /* ---- Screens ---- */
 
-.entry-screen,
 .qna-screen,
 .story-screen {
   margin-top: 0.25rem;
-}
-
-.entry-screen {
-  text-align: center;
-  padding: 1.5rem 0;
-}
-
-.entry-screen p {
-  margin-left: auto;
-  margin-right: auto;
-  color: var(--ink-muted);
-}
-
-.entry-screen form {
-  margin: 1.5rem 0;
 }
 
 .qna-screen form,
@@ -202,15 +226,29 @@ select:focus {
   flex: 1;
 }
 
-.path-selector {
+/* ---- Example prompts: shown only while the Q&A input is empty and
+   nothing has been asked yet, so a first-time visitor has something
+   concrete to tap rather than a blank box. ---- */
+
+.example-prompts {
   display: flex;
-  gap: 0.75rem;
-  justify-content: center;
   flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
 }
 
-.mode-switch {
-  margin-bottom: 1.5rem;
+.example-prompts-label {
+  width: 100%;
+  font-size: 0.9rem;
+  color: var(--ink-muted);
+  margin: 0 0 0.5rem;
+}
+
+.example-prompts button {
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  text-align: left;
 }
 
 /* ---- Citations: treated as marginalia clipped from the source text,
@@ -326,11 +364,8 @@ select:focus {
     flex-direction: column;
   }
 
-  .path-selector {
-    flex-direction: column;
-  }
-
-  .path-selector button {
-    width: 100%;
+  .tab {
+    font-size: 0.95rem;
+    padding: 0.6rem 0.25rem;
   }
 }
