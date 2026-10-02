@@ -54,3 +54,20 @@ as $$
     order by embedding <=> query_embedding
     limit match_count;
 $$;
+
+-- UX item 7: thumbs up/down feedback on an answer. Run this once in
+-- the Supabase SQL Editor (same place as the table/function above).
+-- No embeddings or vector search involved - this is just a log for
+-- Vartika to review later (backend/feedback_endpoint.py), not wired
+-- into anything automated.
+create table if not exists feedback (
+    id bigint generated always as identity primary key,
+    created_at timestamptz not null default now(),
+    question text not null,
+    answer_type text not null,
+    answer_text text not null,
+    citations jsonb not null default '[]',
+    rating text not null check (rating in ('up', 'down')),
+    provider text,
+    model text
+);

@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 import entry_middleware
+import feedback_endpoint
 import guardrails
 import ping_endpoint
 import qna_endpoint
@@ -104,3 +105,10 @@ async def ask(request: Request, body: qna_endpoint.AskRequest):
     pipeline (rate limit -> guardrails -> scope -> search -> classify ->
     answer -> citations) and the header/error contract it follows."""
     return await qna_endpoint.handle_ask(request, body, resources)
+
+
+@app.post("/api/feedback")
+async def feedback(request: Request, body: feedback_endpoint.FeedbackRequest):
+    """UX item 7: thumbs up/down on an answer. See feedback_endpoint.py -
+    just logs to Supabase for later review, no automated action."""
+    return await feedback_endpoint.handle_feedback(request, body, resources)

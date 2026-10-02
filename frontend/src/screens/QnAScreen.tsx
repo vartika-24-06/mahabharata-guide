@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import type { AskResponse, Citation } from "../api/client";
-import { askQuestion } from "../api/client";
+import type { AskResponse, Citation, FeedbackRating, ValidatedKeyLike } from "../api/client";
+import { askQuestion, submitFeedback } from "../api/client";
 import { useValidationState } from "../state/ValidationStateContext";
 import type { RunRequest } from "../state/ValidationStateContext";
 import { useSessionContext } from "../state/SessionContextProvider";
@@ -18,6 +18,75 @@ const EXAMPLE_PROMPTS = [
   "What does Vidura say about greed?",
   "Why did Karna suffer so much?",
 ];
+
+/** UX item 7: thumbs up/down on a finished answer. Fires once per
+ * answer (a question's `key` on the parent resets this component when
+ * a new question runs), logs the full Q&A to Supabase via
+ * /api/feedback, and shows a quiet "Thanks" in place of the buttons -
+ * nothing automated happens with the result, it's just a log for
+ * Vartika to review later. */
+function FeedbackButtons({
+  question,
+  answer,
+  validatedKey,
+}: {
+  question: string;
+  answer: AskResponse;
+  validatedKey: ValidatedKeyLike | null;
+}) {
+  const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  if (answer.type === "decline" || answer.type === "no_answer") return null;
+
+  const { answerText, citations } =
+    answer.type === "ambiguous"
+      ? {
+          answerText: `${answer.factual_sentence} ${answer.philosophical_sentence}`,
+          citations: [...answer.factual_citations, ...answer.philosophical_citations],
+        }
+      : { answerText: answer.answer, citations: answer.citations };
+
+  async function handleRate(rating: FeedbackRating) {
+    setState("sending");
+    const result = await submitFeedback({
+      question,
+      answerType: answer.type,
+      answerText,
+      citations,
+      rating,
+      provider: validatedKey?.provider,
+      model: validatedKey?.model,
+    });
+    setState(result.ok ? "sent" : "error");
+  }
+
+  if (state === "sent") {
+    return <p className="feedback-thanks">Thanks for the feedback.</p>;
+  }
+
+  return (
+    <div className="feedback-buttons">
+      <span className="feedback-label">Was this helpful?</span>
+      <button
+        type="button"
+        aria-label="Helpful"
+        disabled={state === "sending"}
+        onClick={() => handleRate("up")}
+      >
+        👍
+      </button>
+      <button
+        type="button"
+        aria-label="Not helpful"
+        disabled={state === "sending"}
+        onClick={() => handleRate("down")}
+      >
+        👎
+      </button>
+      {state === "error" && <span className="inline-error">Couldn't save that - try again?</span>}
+    </div>
+  );
+}
 
 function CitationList({ citations }: { citations: Citation[] }) {
   if (citations.length === 0) return null;
@@ -162,6 +231,9 @@ export function QnAScreen({ runRequest }: { runRequest: RunRequest | null }) {
       )}
 
       {answer && <AnswerView answer={answer} />}
+      {answer && (
+        <FeedbackButtons key={question} question={question} answer={answer} validatedKey={validatedKey} />
+      )}
 
       {answer && (answer.type === "factual" || answer.type === "philosophical") && !expanded && (
         <button

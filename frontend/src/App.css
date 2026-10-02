@@ -310,6 +310,40 @@ select:focus {
   font-weight: 600;
 }
 
+/* ---- Feedback: quiet, inline, same restraint as the citations above
+   it - a quick thumb, not a form. ---- */
+
+.feedback-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1.25rem;
+}
+
+.feedback-label {
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+}
+
+.feedback-buttons button {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 0.15rem 0.4rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.feedback-buttons button:hover:not(:disabled) {
+  background: var(--bg-raised);
+  border-color: var(--border);
+}
+
+.feedback-thanks {
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+  margin: 0 0 1.25rem;
+}
+
 .loading {
   color: var(--ink-muted);
 }

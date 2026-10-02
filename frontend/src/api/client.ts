@@ -176,3 +176,27 @@ export interface ValidatedKeyLike {
   key: string;
   model: string;
 }
+
+// --- /api/feedback (UX item 7) ---
+
+export type FeedbackRating = "up" | "down";
+
+export function submitFeedback(args: {
+  question: string;
+  answerType: string;
+  answerText: string;
+  citations: Citation[];
+  rating: FeedbackRating;
+  provider?: Provider;
+  model?: string;
+}) {
+  return apiPost<{ status: "ok" }>("/api/feedback", {
+    question: args.question,
+    answer_type: args.answerType,
+    answer_text: args.answerText,
+    citations: args.citations,
+    rating: args.rating,
+    provider: args.provider,
+    model: args.model,
+  });
+}
