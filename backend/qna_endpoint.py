@@ -72,8 +72,12 @@ def _citation_lists(label: str, raw: dict, passages: list[dict]):
     shapes. Kept separate from the expand path since ambiguous has two
     citation lists and factual/philosophical have one."""
     if label == "ambiguous":
-        factual_citations = answer.build_citations(raw.get("factual_ids"), passages)
-        philosophical_citations = answer.build_citations(raw.get("philosophical_ids"), passages)
+        factual_citations = answer.build_citations(
+            raw.get("factual_ids"), passages, raw.get("factual_sentence", "")
+        )
+        philosophical_citations = answer.build_citations(
+            raw.get("philosophical_ids"), passages, raw.get("philosophical_sentence", "")
+        )
         has_any = bool(factual_citations or philosophical_citations)
         fields = {
             "type": "ambiguous",
@@ -84,7 +88,7 @@ def _citation_lists(label: str, raw: dict, passages: list[dict]):
         }
         return has_any, fields
 
-    citations = answer.build_citations(raw.get("used_ids"), passages)
+    citations = answer.build_citations(raw.get("used_ids"), passages, raw.get("answer", ""))
     fields = {
         "type": label,
         "answer": raw.get("answer", ""),
@@ -178,7 +182,7 @@ async def handle_ask(request: Request, body: AskRequest, resources: dict) -> JSO
         except llm_client.LLMError as e:
             return _error(400, e.kind, str(e))
 
-        citations = answer.build_citations(raw.get("used_ids"), passages)
+        citations = answer.build_citations(raw.get("used_ids"), passages, raw.get("answer", ""))
         query_rewritten = False
         if not citations:
             retry_passages, retry_degraded = _retry_with_rewritten_query(
@@ -191,7 +195,9 @@ async def handle_ask(request: Request, body: AskRequest, resources: dict) -> JSO
                     )
                 except llm_client.LLMError:
                     retry_raw = {}
-                retry_citations = answer.build_citations(retry_raw.get("used_ids"), retry_passages)
+                retry_citations = answer.build_citations(
+                    retry_raw.get("used_ids"), retry_passages, retry_raw.get("answer", "")
+                )
                 if retry_citations:
                     raw, passages, degraded = retry_raw, retry_passages, retry_degraded
                     citations = retry_citations

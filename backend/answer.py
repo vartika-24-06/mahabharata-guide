@@ -189,7 +189,82 @@ def _parse_passage_id(raw_id) -> int | None:
     return int(match.group()) if match else None
 
 
-def build_citations(used_ids: list, passages: list[dict]) -> list[dict]:
+_STOPWORDS = frozenset("""
+a an and are as at be but by for from had has have he her hers him his
+i if in into is it its of on or our ours she so than that the their
+theirs them then there these they this those to was we were what when
+which who will with you your yours not no nor do does did can could
+would should shall will may might must been being
+""".split())
+
+_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
+_WORD_RE = re.compile(r"[a-z']+")
+
+
+def _select_excerpt(text: str, reference: str, max_chars: int = 220) -> str:
+    """Picks the sentence(s) within `text` most relevant to `reference`
+    (the model's own answer, built from this exact passage) instead of
+    always taking the passage's first max_chars characters.
+
+    This exists because of a confirmed live bug (UX item 8): a citation
+    chunk runs to a few hundred words (ingest.py's chunk_into_passages
+    targets ~300 words per passage, breaking on paragraph boundaries,
+    not by topic), so it often covers more than one narrative beat. A
+    real example - UDYOGA PARVA Section 7's third chunk opens with
+    Duryodhana embracing Balarama, "that hero wielding a plough", and
+    only several sentences later gets to Arjuna asking Krishna to be
+    his charioteer and Krishna agreeing. The model's answer correctly
+    drew on the charioteer sentence - the citation was never wrong -
+    but a plain head-truncation always showed the Balarama sentence
+    instead, since it happens to come first in the chunk. That reads as
+    a hallucinated/unrelated citation even though the underlying
+    retrieval and answer were both correct.
+
+    Still entirely genuine text (design.md: "an excerpt is always
+    genuine") - this only chooses WHICH real sentences to show, it
+    never rewrites or invents any. With no reference text (every
+    existing caller except qna_endpoint.py's production path), this
+    returns the full passage unchanged, same as before this fix."""
+    if not reference or len(text) <= max_chars:
+        return text
+
+    sentences = [s for s in _SENTENCE_RE.split(text.strip()) if s]
+    if len(sentences) <= 1:
+        return text[:max_chars].rstrip() + "..."
+
+    ref_words = set(_WORD_RE.findall(reference.lower())) - _STOPWORDS
+    if not ref_words:
+        return text[:max_chars].rstrip() + "..."
+
+    scores = [len(set(_WORD_RE.findall(s.lower())) & ref_words) for s in sentences]
+    best_idx = max(range(len(sentences)), key=lambda i: scores[i])
+    if scores[best_idx] <= 0:
+        return text[:max_chars].rstrip() + "..."
+
+    # Grow outward from the best-matching sentence while there's room,
+    # so the excerpt reads as a coherent snippet rather than one bare
+    # sentence dropped out of context.
+    start = end = best_idx
+    excerpt = sentences[best_idx]
+    while True:
+        grew = False
+        if start > 0 and len(excerpt) + len(sentences[start - 1]) + 1 <= max_chars:
+            start -= 1
+            excerpt = sentences[start] + " " + excerpt
+            grew = True
+        if end < len(sentences) - 1 and len(excerpt) + len(sentences[end + 1]) + 1 <= max_chars:
+            end += 1
+            excerpt = excerpt + " " + sentences[end + 1]
+            grew = True
+        if not grew:
+            break
+
+    prefix = "... " if start > 0 else ""
+    suffix = " ..." if end < len(sentences) - 1 else ""
+    return f"{prefix}{excerpt}{suffix}"
+
+
+def build_citations(used_ids: list, passages: list[dict], reference_text: str = "") -> list[dict]:
     """Turns model-reported passage numbers (1-indexed, matching
     _build_context_block's [P1], [P2], ...) into real citations, built
     entirely from our own retrieved passage data - never from anything
@@ -197,7 +272,13 @@ def build_citations(used_ids: list, passages: list[dict]) -> list[dict]:
     (design.md: "the citation is dropped and the answer is checked
     again" - the "checked again" part is the caller's job: an answer
     left with zero citations after dropping should not be shown as-is,
-    see qna-mode Requirement 9.3)."""
+    see qna-mode Requirement 9.3).
+
+    reference_text (the model's own answer/sentence built from these
+    passages) steers _select_excerpt toward the part of a long passage
+    that actually supports it - see that function's docstring for why
+    (UX item 8). Left blank, every citation gets the full passage text,
+    unchanged from this function's original behavior."""
     citations = []
     seen = set()
     for raw_id in used_ids or []:
@@ -208,10 +289,14 @@ def build_citations(used_ids: list, passages: list[dict]) -> list[dict]:
             continue
         seen.add(idx)
         meta = passages[idx - 1]["meta"]
+        # .get(..., "") only covers a missing key - search.fill_missing_text
+        # can leave this key present but set to None when Supabase couldn't
+        # be reached for that passage, which _select_excerpt can't len() on.
+        full_text = passages[idx - 1].get("text") or ""
         citations.append({
             "parva_name": meta["parva_name"],
             "section": meta["section"],
-            "excerpt": passages[idx - 1].get("text", ""),
+            "excerpt": _select_excerpt(full_text, reference_text),
         })
     return citations
 

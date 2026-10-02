@@ -90,12 +90,16 @@ function FeedbackButtons({
 
 function CitationList({ citations }: { citations: Citation[] }) {
   if (citations.length === 0) return null;
+  // The backend already picks a short, relevant snippet of the cited
+  // passage (answer.py's _select_excerpt, UX item 8) rather than
+  // always the passage's first N characters - a plain head-truncation
+  // here could cut that snippet right back down to an arbitrary prefix
+  // and reintroduce the same bug, so it's shown as-is.
   return (
     <ul className="citations">
       {citations.map((c, i) => (
         <li key={i}>
-          <strong>{c.parva_name}</strong>, Section {c.section}: "{c.excerpt.slice(0, 140)}
-          {c.excerpt.length > 140 ? "..." : ""}"
+          <strong>{c.parva_name}</strong>, Section {c.section}: "{c.excerpt}"
         </li>
       ))}
     </ul>

@@ -77,6 +77,58 @@ def test_build_citations_empty_list():
     assert answer.build_citations(None, FAKE_PASSAGES) == []
 
 
+# UX item 8: a citation whose excerpt is a real passage's opening
+# sentence but not the sentence that actually supports the model's
+# claim - confirmed live via "Why did Krishna choose to be Arjuna's
+# charioteer?" (UDYOGA PARVA Section 7's third chunk opens with
+# Duryodhana embracing Balarama, "that hero wielding a plough", and
+# only several sentences later gets to Krishna agreeing to be Arjuna's
+# charioteer - the actual answer). Modeled here with a short synthetic
+# passage so the test doesn't depend on the real corpus.
+_CHARIOTEER_PASSAGE = [{
+    "meta": {"parva_name": "UDYOGA PARVA", "section": 7, "passage_index": 2},
+    "text": (
+        "Duryodhana embraced that hero wielding a plough for his weapon of "
+        "battle, well pleased with the army he had secured. Arjuna then said "
+        "it had always been his desire to have Krishna for driving his car. "
+        "Krishna agreed, saying he would act as Arjuna's charioteer."
+    ),
+}]
+
+
+def test_build_citations_without_reference_returns_full_passage():
+    # Default behavior, unchanged for every caller that doesn't pass a
+    # reference (test_citation_check.py's verbatim-excerpt guarantee
+    # relies on this staying exactly the full passage text).
+    citations = answer.build_citations([1], _CHARIOTEER_PASSAGE)
+    assert citations[0]["excerpt"] == _CHARIOTEER_PASSAGE[0]["text"]
+
+
+def test_build_citations_with_reference_favors_the_supporting_sentence():
+    reference = "Krishna agreed to act as Arjuna's charioteer because Arjuna asked him to."
+    citations = answer.build_citations([1], _CHARIOTEER_PASSAGE, reference)
+    excerpt = citations[0]["excerpt"]
+    assert "charioteer" in excerpt
+    assert "plough" not in excerpt
+
+
+def test_select_excerpt_result_is_always_a_genuine_substring():
+    text = _CHARIOTEER_PASSAGE[0]["text"]
+    reference = "Krishna agreed to act as Arjuna's charioteer."
+    excerpt = answer._select_excerpt(text, reference, max_chars=80)
+    stripped = excerpt.removeprefix("... ").removesuffix(" ...")
+    assert stripped in text
+
+
+def test_select_excerpt_falls_back_to_head_truncation_with_no_overlap():
+    text = "A" * 300
+    assert answer._select_excerpt(text, "completely unrelated words here") == ("A" * 220 + "...")
+
+
+def test_select_excerpt_returns_short_text_unchanged():
+    assert answer._select_excerpt("short text", "any reference") == "short text"
+
+
 def test_write_answer_factual():
     mock_response = '{"answer": "Bhishma never married.", "used_ids": [1]}'
     with patch("llm_client.complete", return_value=mock_response):
