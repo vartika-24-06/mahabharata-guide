@@ -51,8 +51,15 @@ def rewrite_query(
             model=model,
             max_tokens=100,
         )
-    except llm_client.LLMError:
+    except llm_client.LLMError as exc:
+        # Printed rather than silently swallowed - a caller only sees
+        # "rewrite tried: None" either way, and auth/rate_limit/timeout
+        # vs. "the model just returned nothing" are different problems
+        # worth telling apart when debugging a still-failing eval row.
+        print(f"query_rewrite.rewrite_query failed ({exc.kind}): {exc}")
         return None
 
     text = text.strip()
+    if not text:
+        print("query_rewrite.rewrite_query: model returned an empty response.")
     return text or None
