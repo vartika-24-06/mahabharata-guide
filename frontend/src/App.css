@@ -35,6 +35,46 @@
   font-size: 1.5rem;
 }
 
+/* ---- About brief: one quiet line of context beneath the header,
+   not a hero - the question box is still the first thing anyone acts
+   on. ---- */
+
+.about-brief {
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  max-width: none;
+  margin: 0 0 1.5rem;
+}
+
+.about-brief a {
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+}
+
+.about-brief a:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: inherit;
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  cursor: pointer;
+}
+
+.link-button:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
 .key-status {
   display: flex;
   align-items: center;
@@ -126,6 +166,29 @@ select:focus {
 
 .modal h2 {
   font-size: 1.25rem;
+}
+
+.modal-wide {
+  max-width: 540px;
+}
+
+.how-it-works-steps section {
+  margin-bottom: 1.25rem;
+}
+
+.how-it-works-steps h3 {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 0.35rem;
+}
+
+.how-it-works-steps p {
+  font-size: 0.9rem;
+  color: var(--ink-muted);
+  max-width: none;
+  margin: 0;
 }
 
 .field {

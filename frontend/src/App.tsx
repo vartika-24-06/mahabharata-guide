@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { HowItWorksModal } from "./components/HowItWorksModal";
 import { KeyModal } from "./components/KeyModal";
 import { KeyStatusElement } from "./components/KeyStatusElement";
 import { QnAScreen } from "./screens/QnAScreen";
@@ -29,6 +30,7 @@ export default function App() {
 
 function AppShell({ runRequest }: { runRequest: RunRequest | null }) {
   const { serverWakeState } = useSessionToken();
+  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
 
   return (
     <div className="app">
@@ -41,6 +43,28 @@ function AppShell({ runRequest }: { runRequest: RunRequest | null }) {
         </div>
         <KeyStatusElement serverWakeState={serverWakeState} />
       </header>
+
+      <p className="about-brief">
+        Ask a question about the Mahabharata and get an answer grounded in the real text -
+        Kisari Mohan Ganguli's English prose translation (
+        <a href="https://archive.sacred-texts.com/hin/maha/index.htm" target="_blank" rel="noreferrer">
+          read the original
+        </a>
+        ) - with citations back to the passages it's drawn from.{" "}
+        <button type="button" className="link-button" onClick={() => setHowItWorksOpen(true)}>
+          How this works
+        </button>{" "}
+        ·{" "}
+        <a
+          href="https://github.com/vartika-24-06/mahabharata-guide"
+          target="_blank"
+          rel="noreferrer"
+        >
+          View the code
+        </a>
+      </p>
+
+      {howItWorksOpen && <HowItWorksModal onClose={() => setHowItWorksOpen(false)} />}
 
       <KeyModal />
 
