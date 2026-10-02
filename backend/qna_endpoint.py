@@ -43,6 +43,7 @@ import answer
 import classifier
 import guardrails
 import llm_client
+import qna_log
 import query_rewrite
 import rate_limit
 import scope
@@ -144,16 +145,24 @@ async def handle_ask(request: Request, body: AskRequest, resources: dict) -> JSO
     question = body.question.strip()
     has_context = bool(body.context)
 
+    def respond(payload: dict) -> JSONResponse:
+        # Every answered-or-declined exchange gets logged here, right
+        # before it goes back to the visitor - see qna_log.py. Provider
+        # failures (_error(...)'s 400/429 paths above/below) aren't
+        # real exchanges to log, so they go straight out without this.
+        qna_log.log_exchange(resources, qna_log.build_row(question, payload, body.provider, body.model))
+        return JSONResponse(payload)
+
     # --- Guardrails, then scope (Tasks 9, 8) - both are normal "decline"
     # answers, not HTTP errors: the App is working correctly, it's just
     # saying no (qna-mode Requirement 9.4). ---
     guardrails_ok, guardrails_message = guardrails.check_guardrails(question)
     if not guardrails_ok:
-        return JSONResponse({"type": "decline", "message": guardrails_message})
+        return respond({"type": "decline", "message": guardrails_message})
 
     in_scope, decline_message = scope.check_scope(question, has_context=has_context)
     if not in_scope:
-        return JSONResponse({"type": "decline", "message": decline_message})
+        return respond({"type": "decline", "message": decline_message})
 
     # --- Retrieval (Task 7) ---
     passages, degraded = search.hybrid_search(
@@ -205,12 +214,12 @@ async def handle_ask(request: Request, body: AskRequest, resources: dict) -> JSO
 
         if not citations:
             suggestions = answer.suggest_related_topics(passages)
-            return JSONResponse({
+            return respond({
                 "type": "no_answer",
                 "message": answer.NO_ANSWER_MESSAGE.format(suggestions=", ".join(suggestions)),
                 "suggestions": suggestions,
             })
-        return JSONResponse({
+        return respond({
             "type": label,
             "expanded": True,
             "answer": raw.get("answer", ""),
@@ -262,7 +271,7 @@ async def handle_ask(request: Request, body: AskRequest, resources: dict) -> JSO
         # both mean "don't show this as an answer" (design.md: "checked
         # again" after dropping citations) - even after the rewrite retry.
         suggestions = answer.suggest_related_topics(passages)
-        return JSONResponse({
+        return respond({
             "type": "no_answer",
             "message": answer.NO_ANSWER_MESSAGE.format(suggestions=", ".join(suggestions)),
             "suggestions": suggestions,
@@ -271,4 +280,4 @@ async def handle_ask(request: Request, body: AskRequest, resources: dict) -> JSO
     fields["meaning_search_degraded"] = degraded
     fields["classifier_confidence"] = classification["confidence"]
     fields["query_rewritten"] = query_rewritten
-    return JSONResponse(fields)
+    return respond(fields)

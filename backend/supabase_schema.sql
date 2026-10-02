@@ -71,3 +71,23 @@ create table if not exists feedback (
     provider text,
     model text
 );
+
+-- Q&A exchange log: every question handle_ask answers or declines gets
+-- a row here (backend/qna_log.py), separate from `feedback` above
+-- (which only gets a row when a visitor clicks a thumb). Run this once
+-- in the Supabase SQL Editor, same as the other tables. Not wired into
+-- anything automated - a log for Vartika to review later.
+create table if not exists qna_logs (
+    id bigint generated always as identity primary key,
+    created_at timestamptz not null default now(),
+    question text not null,
+    type text not null check (type in ('decline', 'no_answer', 'factual', 'philosophical', 'ambiguous')),
+    expanded boolean not null default false,
+    answer_text text not null default '',
+    citations jsonb not null default '[]',
+    provider text,
+    model text,
+    meaning_search_degraded boolean,
+    query_rewritten boolean,
+    classifier_confidence float8
+);
