@@ -1,111 +1,134 @@
+/* Design tokens. Light mode reads like a kept manuscript page (warm
+   parchment, indigo headings, sindoor-red accent, temple-gold dividers);
+   dark mode shifts the same palette to an indigo night with a warm
+   ember accent, rather than a generic near-black. */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --bg: #efe3c3;
+  --bg-raised: #faf3de;
+  --ink: #332a1c;
+  --ink-muted: #6b5f47;
+  --ink-heading: #223059;
+  --accent: #a23b23;
+  --accent-hover: #832d19;
+  --gold: #a87c32;
+  --border: #d6c093;
+  --focus: #223059;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --font-display: "Marcellus", "Iowan Old Style", Georgia, serif;
+  --font-body: "Lora", "Iowan Old Style", Georgia, serif;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
   color-scheme: light dark;
-  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink);
   background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+    --bg: #161a30;
+    --bg-raised: #1f2440;
+    --ink: #e7dec4;
+    --ink-muted: #a89a79;
+    --ink-heading: #ecc87a;
+    --accent: #e0794f;
+    --accent-hover: #f08d62;
+    --gold: #d1a454;
+    --border: #333a5e;
+    --focus: #ecc87a;
   }
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+:root[data-theme="light"] {
+  --bg: #efe3c3;
+  --bg-raised: #faf3de;
+  --ink: #332a1c;
+  --ink-muted: #6b5f47;
+  --ink-heading: #223059;
+  --accent: #a23b23;
+  --accent-hover: #832d19;
+  --gold: #a87c32;
+  --border: #d6c093;
+  --focus: #223059;
+}
+
+:root[data-theme="dark"] {
+  --bg: #161a30;
+  --bg-raised: #1f2440;
+  --ink: #e7dec4;
+  --ink-muted: #a89a79;
+  --ink-heading: #ecc87a;
+  --accent: #e0794f;
+  --accent-hover: #f08d62;
+  --gold: #d1a454;
+  --border: #333a5e;
+  --focus: #ecc87a;
+}
+
+* {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  background: var(--bg);
+}
+
+#root {
+  min-height: 100svh;
 }
 
 h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: var(--ink-heading);
+  line-height: 1.25;
+  margin: 0 0 0.6em;
 }
 
 h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+  font-size: 1.9rem;
+  letter-spacing: 0.01em;
 }
+
 h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
+  font-size: 1.3rem;
 }
+
 p {
-  margin: 0;
+  margin: 0 0 1em;
+  max-width: 62ch;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+a {
+  color: var(--accent);
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+button {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+}
+
+input,
+select,
+textarea {
+  font-family: var(--font-body);
+  font-size: 1rem;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

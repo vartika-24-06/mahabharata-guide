@@ -108,7 +108,7 @@ export function QnAScreen({
   return (
     <div className="qna-screen">
       <div className="mode-switch">
-        <button type="button" onClick={onSwitchToStory}>
+        <button type="button" className="btn-ghost" onClick={onSwitchToStory}>
           Hear a Story instead
         </button>
       </div>
@@ -120,7 +120,7 @@ export function QnAScreen({
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Ask about the Mahabharata..."
         />
-        <button type="submit" disabled={loading}>
+        <button type="submit" className="btn-primary" disabled={loading}>
           Ask
         </button>
       </form>

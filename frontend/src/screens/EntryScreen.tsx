@@ -16,7 +16,6 @@ export function EntryScreen() {
 
   return (
     <div className="entry-screen">
-      <h1>The Mahabharata Guide</h1>
       <p>Ask a question about the epic, or hear a story from it.</p>
 
       <form onSubmit={(e) => submit(text.trim() ? "qna" : "qna", e)}>
@@ -29,10 +28,10 @@ export function EntryScreen() {
       </form>
 
       <div className="path-selector">
-        <button type="button" onClick={() => submit("qna")}>
+        <button type="button" className="btn-primary" onClick={() => submit("qna")}>
           Ask a Question
         </button>
-        <button type="button" onClick={() => submit("story")}>
+        <button type="button" className="btn-primary" onClick={() => submit("story")}>
           Hear a Story
         </button>
       </div>

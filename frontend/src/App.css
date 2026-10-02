@@ -1,57 +1,144 @@
 .app {
   max-width: 640px;
   margin: 0 auto;
-  padding: 1rem;
-  font-family: system-ui, sans-serif;
+  padding: 0 1.25rem 3rem;
+}
+
+/* ---- Header: the one persistent landmark, with a single hairline
+   rule doing the one structural division the page needs. ---- */
+
+.site-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.75rem 0 1rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.75rem;
+  flex-wrap: wrap;
+}
+
+.site-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
 }
 
 .key-status {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  justify-content: flex-end;
   font-size: 0.85rem;
-  margin-bottom: 1rem;
+  color: var(--ink-muted);
 }
 
 .key-status .waking {
-  color: #b45309;
+  color: var(--accent);
+  font-style: italic;
 }
+
+/* ---- Buttons & inputs ---- */
+
+button {
+  background: var(--bg-raised);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+button.btn-primary {
+  background: var(--accent);
+  color: var(--bg-raised);
+  border-color: var(--accent);
+}
+
+button.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--bg-raised);
+}
+
+button.btn-ghost {
+  background: none;
+  border: none;
+  padding: 0.25rem 0;
+  color: var(--ink-muted);
+}
+
+button.btn-ghost:hover:not(:disabled) {
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  background: var(--bg-raised);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+input::placeholder {
+  color: var(--ink-muted);
+}
+
+input:focus,
+select:focus {
+  border-color: var(--accent);
+}
+
+/* ---- Key modal ---- */
 
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(22, 18, 10, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 1rem;
+  z-index: 10;
 }
 
 .modal {
-  background: white;
-  color: #111;
-  padding: 1.5rem;
-  border-radius: 8px;
-  width: 90%;
+  background: var(--bg-raised);
+  color: var(--ink);
+  padding: 1.75rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  width: 100%;
   max-width: 420px;
+}
+
+.modal h2 {
+  font-size: 1.25rem;
 }
 
 .field {
   display: block;
-  margin-bottom: 0.85rem;
+  margin-bottom: 1rem;
 }
 
 .field span {
   display: block;
   font-size: 0.85rem;
-  margin-bottom: 0.25rem;
-}
-
-.field select,
-.field input {
-  width: 100%;
-  padding: 0.4rem;
-  box-sizing: border-box;
+  color: var(--ink-muted);
+  margin-bottom: 0.3rem;
 }
 
 .key-field-row {
@@ -64,79 +151,186 @@
 }
 
 .inline-error {
-  color: #b91c1c;
+  color: var(--accent);
   font-size: 0.9rem;
 }
 
 .disclosure {
-  font-size: 0.75rem;
-  color: #555;
+  font-size: 0.8rem;
+  color: var(--ink-muted);
 }
 
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
 }
+
+/* ---- Screens ---- */
 
 .entry-screen,
 .qna-screen,
 .story-screen {
-  margin-top: 1rem;
+  margin-top: 0.25rem;
 }
 
-.entry-screen form,
+.entry-screen {
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+.entry-screen p {
+  margin-left: auto;
+  margin-right: auto;
+  color: var(--ink-muted);
+}
+
+.entry-screen form {
+  margin: 1.5rem 0;
+}
+
 .qna-screen form,
 .story-screen form {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 }
 
-.entry-screen input,
 .qna-screen input,
 .story-screen input {
   flex: 1;
-  padding: 0.5rem;
 }
 
 .path-selector {
   display: flex;
   gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 .mode-switch {
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 }
 
+/* ---- Citations: treated as marginalia clipped from the source text,
+   not a plain bulleted list. ---- */
+
 .citations {
-  font-size: 0.85rem;
-  color: #444;
-  padding-left: 1.2rem;
+  list-style: none;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.citations li {
+  border-left: 3px solid var(--gold);
+  background: var(--bg-raised);
+  padding: 0.6rem 0.9rem;
+  font-size: 0.9rem;
+  color: var(--ink-muted);
+}
+
+.citations li strong {
+  color: var(--ink-heading);
+  font-weight: 600;
+}
+
+/* ---- Story picker: a quiet grid of choices, not primary actions. ---- */
+
+.story-picker {
+  animation: settle 0.25s ease-out;
 }
 
 .picker-section {
-  margin: 1rem 0;
+  margin: 1.25rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.picker-section h3 {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+  margin: 0 0 0.6rem;
 }
 
 .picker-section button {
-  margin: 0.15rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
 }
 
 .story-choices {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
   flex-wrap: wrap;
 }
 
 .loading {
-  font-style: italic;
-  color: #666;
+  color: var(--ink-muted);
 }
 
 .decline,
 .no-answer,
 .no-story {
-  font-style: italic;
+  color: var(--ink-muted);
+}
+
+.answer,
+.story {
+  animation: settle 0.3s ease-out;
+}
+
+.story-complete {
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story-picker,
+  .answer,
+  .story {
+    animation: none;
+  }
+}
+
+/* ---- Small screens: stack the header, let actions take full width. ---- */
+
+@media (max-width: 480px) {
+  .site-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .qna-screen form,
+  .story-screen form {
+    flex-direction: column;
+  }
+
+  .path-selector {
+    flex-direction: column;
+  }
+
+  .path-selector button {
+    width: 100%;
+  }
 }

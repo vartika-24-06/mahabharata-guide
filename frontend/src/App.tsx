@@ -40,7 +40,10 @@ function AppShell({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen
 
   return (
     <div className="app">
-      <KeyStatusElement serverWakeState={serverWakeState} />
+      <header className="site-header">
+        <h1>The Mahabharata Guide</h1>
+        <KeyStatusElement serverWakeState={serverWakeState} />
+      </header>
       <KeyModal />
       {screen.name === "entry" && <EntryScreen />}
       {screen.name === "qna" && (

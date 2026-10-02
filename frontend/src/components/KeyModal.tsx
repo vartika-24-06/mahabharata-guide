@@ -109,7 +109,7 @@ export function KeyModal() {
             <button type="button" onClick={dismissKeyModal} disabled={isValidating}>
               Cancel
             </button>
-            <button type="submit" disabled={saveDisabled}>
+            <button type="submit" className="btn-primary" disabled={saveDisabled}>
               {isValidating ? "Validating..." : "Save key"}
             </button>
           </div>

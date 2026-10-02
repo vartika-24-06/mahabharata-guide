@@ -88,7 +88,7 @@ export function StoryScreen({
   return (
     <div className="story-screen">
       <div className="mode-switch">
-        <button type="button" onClick={onSwitchToQnA}>
+        <button type="button" className="btn-ghost" onClick={onSwitchToQnA}>
           Ask a Question instead
         </button>
       </div>
@@ -102,7 +102,7 @@ export function StoryScreen({
               onChange={(e) => setTypedText(e.target.value)}
               placeholder="Tell me a story about..."
             />
-            <button type="submit" disabled={loading}>
+            <button type="submit" className="btn-primary" disabled={loading}>
               Go
             </button>
           </form>
