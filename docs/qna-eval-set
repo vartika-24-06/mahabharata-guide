@@ -22,17 +22,17 @@ Labels:
 | 9 | Who was Drishtadyumna? | Factual | Alternative name spelling (Guardrails Req 4) | |
 | 10 | What happened in the dice game? | Factual | Hard scene told plainly, not softened | |
 | 11 | Why should Arjuna have fought the war? | Philosophical | Philosophical with an epic name | |
-| 12 | Why did Karna suffer so much? | Philosophical | Philosophical about a character's fate | |
+| 12 | Why did Karna suffer so much? | Ambiguous | Philosophical about a character's fate, but has a genuinely separable factual half (the actual chain of events behind the "why") - relabeled from Philosophical, see decision-log.md | |
 | 13 | What does the Mahabharata say about duty? | Philosophical | Theme question naming the epic | |
 | 14 | What does Krishna teach Arjuna about action and its results? | Philosophical | Theme question with names | |
 | 15 | Is fate stronger than effort in the epic? | Philosophical | Theme question, no names, but "the epic" | Settle |
 | 16 | What does Vidura say about greed? | Philosophical | Theme question with a lesser-known character | |
 | 17 | Was the Mahabharata war necessary? | Philosophical | Verdict-seeking, but no genuinely separate factual half - relabeled from Ambiguous after live classifier testing, see decision-log.md | |
 | 18 | Why did Krishna side with the Pandavas? | Ambiguous | Motive (fact) and dharma (meaning) | |
-| 19 | Did Yudisthir ever lie? | Ambiguous | Spelling variant; a fact with a moral edge | Settle |
+| 19 | Did Yudisthir ever lie? | Factual | Spelling variant; a fact with a moral edge, but asked as a plain yes/no event question, same shape as rows 1-2 - relabeled from Ambiguous, see decision-log.md | |
 | 20 | What happened after the war of Kurukshetra? | Factual | Events only, or does the user want the aftermath's meaning? | Settle |
 | 21 | Was Karna wrong to stay loyal to Duryodhana? | Philosophical | Verdict-seeking; App must not give one (Q&A Req 10.3) - relabeled from Ambiguous after live classifier testing, see decision-log.md | |
-| 22 | Was Draupadi's humiliation a failure of dharma? | Philosophical | Hard scene plus verdict-seeking - relabeled from Ambiguous for consistency with rows 17/21, see decision-log.md | |
+| 22 | Was Draupadi's humiliation a failure of dharma? | Ambiguous | Hard scene plus verdict-seeking, but unlike rows 17/21 has a genuinely separable factual half (the disrobing scene itself) distinct from the dharma question - relabeled back from Philosophical, correcting the earlier "consistency with 17/21" grouping, see decision-log.md | |
 | 23 | Why did he do that? (after an answer about Karna) | Follow-up | Answered with context; no epic words in the query | |
 | 24 | Tell me more about her. (with no earlier question) | Decline | Same shape as 23, but with no context | |
 | 25 | The war led to so many deaths. What was the point? | Follow-up | No epic names; depends on context or on "the war" | Settle |
