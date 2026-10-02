@@ -52,7 +52,14 @@ def classify_question(
         system=SYSTEM_PROMPT,
         user=question,
         model=model,
-        max_tokens=50,
+        # Raised from 50 - Gemini's API counts internal "thinking"
+        # tokens against max_output_tokens even at its default minimal
+        # thinking level (ai.google.dev/gemini-api/docs/generate-content/
+        # thinking), and 50 left this call no headroom at all. The
+        # classify response itself is tiny ({"label":..., "confidence":...}
+        # is a handful of tokens) - this budget is for the invisible
+        # thinking overhead, not a longer visible answer.
+        max_tokens=200,
         json_mode=True,
     )
 

@@ -45,6 +45,28 @@ def test_build_citations_drops_non_numeric():
     assert len(citations) == 1
 
 
+def test_build_citations_accepts_passage_label_format():
+    # Found via a live Gemini eval run: the prompt asks for bare
+    # integers ("e.g. 1, 3") but Gemini sometimes echoes the context
+    # block's own [P1]/[P2] labels back instead - int("P1") used to
+    # raise and silently drop an otherwise well-cited real answer.
+    citations = answer.build_citations(["P1", "p3"], FAKE_PASSAGES)
+    assert len(citations) == 2
+    assert citations[0]["parva_name"] == "UDYOGA PARVA"
+    assert citations[1]["parva_name"] == "VANA PARVA"
+
+
+def test_build_citations_still_drops_out_of_range_label_format():
+    citations = answer.build_citations(["P99"], FAKE_PASSAGES)
+    assert citations == []
+
+
+def test_build_citations_mixed_int_and_label_formats_dedupe_together():
+    # "P1" and 1 refer to the same passage - must not double-count.
+    citations = answer.build_citations([1, "P1"], FAKE_PASSAGES)
+    assert len(citations) == 1
+
+
 def test_build_citations_dedupes():
     citations = answer.build_citations([1, 1, 1], FAKE_PASSAGES)
     assert len(citations) == 1

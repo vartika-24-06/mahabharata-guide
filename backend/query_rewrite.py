@@ -49,7 +49,12 @@ def rewrite_query(
             system=SYSTEM_PROMPT,
             user=question,
             model=model,
-            max_tokens=100,
+            # Raised from 100 - same Gemini thinking-token headroom
+            # concern as classifier.py/answer.py (see their comments).
+            # This call doesn't pass json_mode (plain keywords, not
+            # parsed JSON), but the underlying truncation risk is the
+            # same: thinking tokens count against this budget too.
+            max_tokens=250,
         )
     except llm_client.LLMError as exc:
         # Printed rather than silently swallowed - a caller only sees

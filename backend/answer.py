@@ -21,6 +21,7 @@ model could still violate the rule, and only eval-set spot-checking
 cited sections") would catch it - this module can't guarantee it.
 """
 import json
+import re
 
 import llm_client
 
@@ -100,7 +101,16 @@ def write_full_answer(
         system=_expand_prompt(label),
         user=user_prompt,
         model=model,
-        max_tokens=900,
+        # 900 (budgeted for ~150-250 word visible output) left no room
+        # on Gemini - its API counts internal "thinking" tokens against
+        # max_output_tokens even at the "minimal" thinking level used by
+        # default (ai.google.dev/gemini-api/docs/generate-content/
+        # thinking), and a live eval run found this silently truncating
+        # JSON into an unparseable {} on multi-passage synthesis
+        # questions. Google's own guidance is to raise the token budget
+        # rather than lower thinking further (already at its floor) -
+        # raised with headroom for thinking + the actual expanded answer.
+        max_tokens=1500,
         json_mode=True,
     )
 
@@ -140,7 +150,12 @@ def write_answer(
         system=system_prompt,
         user=user_prompt,
         model=model,
-        max_tokens=500,
+        # See write_full_answer's comment above - same Gemini thinking-
+        # token truncation risk applies here, confirmed via a live eval
+        # run (rows "What happened in the dice game?" and "What does
+        # Vidura say about greed?" both came back as a literal
+        # unparseable {} at 500, on complex multi-passage questions).
+        max_tokens=1000,
         json_mode=True,
     )
 
@@ -151,6 +166,27 @@ def write_answer(
         # the caller falls through to the "text doesn't cover it" path
         # (qna-mode Requirement 9) rather than crashing or showing junk.
         return {}
+
+
+_ID_DIGITS_RE = re.compile(r"-?\d+")
+
+
+def _parse_passage_id(raw_id) -> int | None:
+    """used_ids is meant to be bare integers (the prompt says so
+    explicitly: "e.g. 1, 3") matching _build_context_block's [P1],
+    [P2], ... labels - but a live Gemini eval run found it sometimes
+    echoes the label itself back instead ("P1", "p3") despite the
+    prompt. int("P1") raises, so a strict int() cast was silently
+    dropping every citation from an otherwise well-reasoned, properly
+    cited answer - not a retrieval or model-quality problem at all, a
+    parsing one. Pulls out the first run of digits from whatever the
+    model sent (int, "3", "P3", "p3", " P3 ") rather than assuming
+    exactly one shape. Returns None for anything with no digits at all
+    (e.g. a stray non-numeric string) - that's still correctly dropped."""
+    if isinstance(raw_id, (int, float)):
+        return int(raw_id)
+    match = _ID_DIGITS_RE.search(str(raw_id))
+    return int(match.group()) if match else None
 
 
 def build_citations(used_ids: list, passages: list[dict]) -> list[dict]:
@@ -165,9 +201,8 @@ def build_citations(used_ids: list, passages: list[dict]) -> list[dict]:
     citations = []
     seen = set()
     for raw_id in used_ids or []:
-        try:
-            idx = int(raw_id)
-        except (TypeError, ValueError):
+        idx = _parse_passage_id(raw_id)
+        if idx is None:
             continue
         if idx < 1 or idx > len(passages) or idx in seen:
             continue
