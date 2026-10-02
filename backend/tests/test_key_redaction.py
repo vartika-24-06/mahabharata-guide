@@ -118,32 +118,3 @@ def test_ask_endpoint_degraded_path_never_logs_either_key(capsys):
     # "never logged".
     assert VISITOR_CANARY not in response.text
     assert SERVER_CANARY not in response.text
-
-
-def test_story_typed_endpoint_degraded_path_never_logs_either_key(capsys):
-    """story_endpoint.py's "typed" request path calls the same
-    search.hybrid_search() as /api/ask - confirmed separately since it's
-    a different call site, not because the underlying risk differs."""
-    catalogue = {"characters": [], "parvas": []}
-    main.resources.update({
-        "bm25_index": search.load_bm25_index(),
-        "openai_client": _canary_openai_client(),
-        "supabase_client": _canary_supabase_client(),
-        "catalogue": catalogue,
-    })
-
-    mock_story = '{"text": "A short story about Bhishma.", "used_ids": [1]}'
-    with patch("story.write_snippet", return_value={"text": "A short story about Bhishma.", "used_ids": [1]}):
-        response = client.post(
-            "/api/story",
-            json={"provider": "openai", "request_type": "typed", "text": "Tell me about Bhishma"},
-            headers={"X-Provider-Key": VISITOR_CANARY, "X-Session-Token": "fake-token"},
-        )
-
-    captured = capsys.readouterr()
-    assert VISITOR_CANARY not in captured.out
-    assert VISITOR_CANARY not in captured.err
-    assert SERVER_CANARY not in captured.out
-    assert SERVER_CANARY not in captured.err
-    assert VISITOR_CANARY not in response.text
-    assert SERVER_CANARY not in response.text

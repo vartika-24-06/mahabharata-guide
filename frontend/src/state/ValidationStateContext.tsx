@@ -5,23 +5,13 @@ import { ping } from "../api/client";
 
 export interface PendingInput {
   text: string;
-  mode: "qna" | "story";
-  /** Set when the request came from a Story preset chip (character,
-   * parva, or surprise) rather than the typed input, so the exact
-   * action can be replayed once a key is validated. */
-  storyAction?: {
-    requestType: "character" | "parva" | "surprise";
-    subject?: string;
-  };
 }
 
-/** A key became available for this input - tabs are always mounted
- * (Req: switching tabs never loses state), so this is how the screen
- * that owns the matching mode is told to actually run the request.
- * `nonce` lets the receiving screen tell a fresh request apart from
- * the same input object lingering in state. */
+/** A key became available for this input - `nonce` lets QnAScreen tell
+ * a fresh request apart from the same input object lingering in
+ * state, since a plain object-identity check wouldn't change if the
+ * same question were resubmitted twice. */
 export interface RunRequest {
-  mode: "qna" | "story";
   nonce: number;
   input: PendingInput;
 }

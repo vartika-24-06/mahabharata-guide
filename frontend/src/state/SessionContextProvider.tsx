@@ -4,12 +4,8 @@ import type { AskExchange } from "../api/client";
 
 /**
  * design.md "Conversation memory (in the browser only)": the last few
- * Q&A exchanges and the list of shown story episodes, kept in the tab
- * for the life of the Session (qna-mode Requirement 8 / story-mode
- * Requirement 8) - NOT per-screen component state, which would be
- * thrown away every time the user switches to the other mode and back
- * (both specs explicitly require the opposite: 8.4 in each spec says
- * switching modes and returning keeps this context).
+ * Q&A exchanges, kept in the tab for the life of the Session (qna-mode
+ * Requirement 8).
  *
  * Backed by sessionStorage rather than plain useState so it also
  * survives a same-tab page refresh, the same pattern already used for
@@ -20,7 +16,6 @@ import type { AskExchange } from "../api/client";
 const MAX_RECENT_EXCHANGES = 3; // design.md: "the last three, to start"
 
 const EXCHANGES_KEY = "recent_exchanges";
-const SHOWN_STORIES_KEY = "shown_stories";
 
 function loadJson<T>(key: string, fallback: T): T {
   try {
@@ -43,8 +38,6 @@ function saveJson(key: string, value: unknown) {
 interface SessionContextValue {
   recentExchanges: AskExchange[];
   addExchange: (exchange: AskExchange) => void;
-  shownStories: string[];
-  addShownStory: (storyId: string) => void;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -53,7 +46,6 @@ export function SessionContextProvider({ children }: { children: ReactNode }) {
   const [recentExchanges, setRecentExchanges] = useState<AskExchange[]>(() =>
     loadJson(EXCHANGES_KEY, [])
   );
-  const [shownStories, setShownStories] = useState<string[]>(() => loadJson(SHOWN_STORIES_KEY, []));
 
   const addExchange = useCallback((exchange: AskExchange) => {
     setRecentExchanges((prev) => {
@@ -63,17 +55,8 @@ export function SessionContextProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const addShownStory = useCallback((storyId: string) => {
-    setShownStories((prev) => {
-      if (prev.includes(storyId)) return prev;
-      const next = [...prev, storyId];
-      saveJson(SHOWN_STORIES_KEY, next);
-      return next;
-    });
-  }, []);
-
   return (
-    <SessionContext.Provider value={{ recentExchanges, addExchange, shownStories, addShownStory }}>
+    <SessionContext.Provider value={{ recentExchanges, addExchange }}>
       {children}
     </SessionContext.Provider>
   );

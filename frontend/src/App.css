@@ -70,19 +70,6 @@ button.btn-primary:hover:not(:disabled) {
   color: var(--bg-raised);
 }
 
-button.btn-ghost {
-  background: none;
-  border: none;
-  padding: 0.25rem 0;
-  color: var(--ink-muted);
-}
-
-button.btn-ghost:hover:not(:disabled) {
-  background: none;
-  color: var(--accent);
-  text-decoration: underline;
-}
-
 input,
 select {
   width: 100%;
@@ -167,62 +154,19 @@ select:focus {
   margin-top: 1.25rem;
 }
 
-/* ---- Tabs: the persistent top-level choice between modes. Plain
-   text-on-text, no pill/card chrome - the active tab is marked by
-   weight, heading color and a rule underneath it, not a filled
-   background, so it reads as a quiet navigational fact rather than a
-   UI widget bolted onto the page. ---- */
+/* ---- Screen ---- */
 
-.tabs {
-  display: flex;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 1.5rem;
-}
-
-.tab {
-  flex: 1;
-  background: none;
-  border: none;
-  border-radius: 0;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  padding: 0.7rem 0.5rem;
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  color: var(--ink-muted);
-  cursor: pointer;
-}
-
-.tab:hover:not(:disabled) {
-  color: var(--accent);
-  border-color: transparent;
-}
-
-.tab.tab-active {
-  color: var(--ink-heading);
-  border-bottom-color: var(--accent);
-}
-
-.tab.tab-active:hover {
-  color: var(--ink-heading);
-}
-
-/* ---- Screens ---- */
-
-.qna-screen,
-.story-screen {
+.qna-screen {
   margin-top: 0.25rem;
 }
 
-.qna-screen form,
-.story-screen form {
+.qna-screen form {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
 }
 
-.qna-screen input,
-.story-screen input {
+.qna-screen input {
   flex: 1;
 }
 
@@ -276,59 +220,17 @@ select:focus {
   font-weight: 600;
 }
 
-/* ---- Story picker: a quiet grid of choices, not primary actions. ---- */
-
-.story-picker {
-  animation: settle 0.25s ease-out;
-}
-
-.picker-section {
-  margin: 1.25rem 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.picker-section h3 {
-  width: 100%;
-  font-family: var(--font-body);
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--ink-muted);
-  margin: 0 0 0.6rem;
-}
-
-.picker-section button {
-  padding: 0.4rem 0.85rem;
-  border-radius: 999px;
-  font-size: 0.9rem;
-}
-
-.story-choices {
-  display: flex;
-  gap: 0.6rem;
-  margin-top: 1.25rem;
-  flex-wrap: wrap;
-}
-
 .loading {
   color: var(--ink-muted);
 }
 
 .decline,
-.no-answer,
-.no-story {
+.no-answer {
   color: var(--ink-muted);
 }
 
-.answer,
-.story {
+.answer {
   animation: settle 0.3s ease-out;
-}
-
-.story-complete {
-  color: var(--ink-muted);
-  font-size: 0.9rem;
 }
 
 @keyframes settle {
@@ -343,9 +245,7 @@ select:focus {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .story-picker,
-  .answer,
-  .story {
+  .answer {
     animation: none;
   }
 }
@@ -359,13 +259,7 @@ select:focus {
     gap: 0.5rem;
   }
 
-  .qna-screen form,
-  .story-screen form {
+  .qna-screen form {
     flex-direction: column;
-  }
-
-  .tab {
-    font-size: 0.95rem;
-    padding: 0.6rem 0.25rem;
   }
 }

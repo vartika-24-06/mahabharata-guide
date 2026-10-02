@@ -6,12 +6,16 @@ import { useValidationState } from "../state/ValidationStateContext";
 import type { RunRequest } from "../state/ValidationStateContext";
 import { useSessionContext } from "../state/SessionContextProvider";
 
-// Pulled from docs/qna-eval-set (unflagged Philosophical rows 12-14) -
-// guaranteed to classify correctly, so a first-time visitor's first
-// answer is a confident one, not an edge case.
+// Pulled from docs/qna-eval-set's unflagged Philosophical rows, and
+// checked locally against the BM25 index, not just the eval set's
+// classification label - row 13 ("What does the Mahabharata say about
+// duty?") looked like an equally safe pick on paper but turned out to
+// have zero keyword-search recall for the Gita passages that actually
+// answer it (found via a live no_answer on this exact prompt), so it's
+// swapped for row 16 here instead.
 const EXAMPLE_PROMPTS = [
   "What does Krishna teach Arjuna about action and its results?",
-  "What does the Mahabharata say about duty?",
+  "What does Vidura say about greed?",
   "Why did Karna suffer so much?",
 ];
 
@@ -29,11 +33,9 @@ function CitationList({ citations }: { citations: Citation[] }) {
   );
 }
 
-/** Task 16: Q&A screen. Question input, answer with citations, Tell Me
- * More, error/loading states (qna-mode Requirements 1-11). Mode
- * switching now happens via the persistent tab bar in App.tsx, not a
- * button on this screen - this screen stays mounted whichever tab is
- * active, so its state survives a switch away and back. */
+/** Task 16: Q&A screen - the whole app. Question input, answer with
+ * citations, Tell Me More, error/loading states (qna-mode Requirements
+ * 1-11). */
 export function QnAScreen({ runRequest }: { runRequest: RunRequest | null }) {
   const { validatedKey, invalidateKeyOnAuthError, setPendingInput } = useValidationState();
   // qna-mode Requirement 8.4: kept across a switch to story mode and
@@ -73,7 +75,7 @@ export function QnAScreen({ runRequest }: { runRequest: RunRequest | null }) {
 
     if (!result.ok) {
       if (result.error.kind === "auth") {
-        invalidateKeyOnAuthError({ text: q, mode: "qna" });
+        invalidateKeyOnAuthError({ text: q });
         return;
       }
       setError(
@@ -114,7 +116,7 @@ export function QnAScreen({ runRequest }: { runRequest: RunRequest | null }) {
     if (!q) return;
     setQuestion(q);
     if (validatedKey) runAsk(q);
-    else setPendingInput({ text: q, mode: "qna" });
+    else setPendingInput({ text: q });
   }
 
   function handleSubmit(e: FormEvent) {

@@ -1,10 +1,9 @@
 /**
  * Thin fetch wrapper for the backend, matching the header/error contract
  * every backend endpoint follows (entry-screen design.md's /api/ping
- * contract, reused as-is by /api/ask and /api/story - see
- * backend/qna_endpoint.py's and backend/story_endpoint.py's module
- * docstrings): X-Provider-Key / X-Session-Token headers, and a failure
- * body of {"error": <kind>, "message": string}.
+ * contract, reused as-is by /api/ask - see backend/qna_endpoint.py's
+ * module docstring): X-Provider-Key / X-Session-Token headers, and a
+ * failure body of {"error": <kind>, "message": string}.
  */
 
 export type Provider = "openai" | "anthropic" | "gemini";
@@ -167,52 +166,6 @@ export function askQuestion(
       expand: args.expand ?? false,
       label: args.label,
       context: args.context,
-    },
-    { providerKey: key.key, sessionToken }
-  );
-}
-
-// --- /api/story (Task 15 / story-mode) ---
-
-export type StoryRequestType = "typed" | "character" | "parva" | "surprise" | "continue" | "another";
-
-export type StoryResponse =
-  | { type: "decline"; message: string }
-  | { type: "no_story"; message: string; suggestions: string[] }
-  | { type: "no_other_story"; message: string }
-  | { type: "complete"; message: string }
-  | {
-      type: "story";
-      story_id: string;
-      subject: string;
-      text: string;
-      citations: Citation[];
-      complete: boolean;
-    };
-
-export function requestStory(
-  key: ValidatedKeyLike,
-  sessionToken: string | undefined,
-  args: {
-    requestType: StoryRequestType;
-    text?: string;
-    subject?: string;
-    episodeIndex?: number;
-    previousText?: string;
-    shownStories?: string[];
-  }
-) {
-  return apiPost<StoryResponse>(
-    "/api/story",
-    {
-      provider: key.provider,
-      model: key.model,
-      request_type: args.requestType,
-      text: args.text,
-      subject: args.subject,
-      episode_index: args.episodeIndex,
-      previous_text: args.previousText,
-      shown_stories: args.shownStories,
     },
     { providerKey: key.key, sessionToken }
   );

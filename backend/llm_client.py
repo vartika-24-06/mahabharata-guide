@@ -131,9 +131,9 @@ def complete(provider: str, api_key: str, system: str, user: str,
     here - they're about reaching the provider at all rather than what
     it said, so callers that need a distinct network/timeout response
     (entry-screen's /api/ping) catch httpx.TimeoutException /
-    httpx.RequestError themselves. timeout defaults to 30s (Q&A/story
-    answers can be slower); /api/ping passes 10s per the entry-screen
-    spec's own validation timeout."""
+    httpx.RequestError themselves. timeout defaults to 30s (Q&A answers
+    can be slower); /api/ping passes 10s per the entry-screen spec's own
+    validation timeout."""
     if provider not in _PROVIDER_FUNCS:
         raise LLMError("other", f"Unknown provider '{provider}'. "
                         f"Expected one of: {', '.join(_PROVIDER_FUNCS)}.")
@@ -151,15 +151,14 @@ def complete_safe(provider: str, api_key: str, system: str, user: str,
     Found via a real live-eval run (Task 19): a genuine OpenAI read
     timeout during answer.write_answer() crashed run_eval.py with a raw
     httpx.ReadTimeout traceback - and the exact same call, from the same
-    module, is what qna_endpoint.py and story_endpoint.py use in
-    production, each of which only catches LLMError. Without this, a
-    slow provider response would 500 the whole request instead of
-    returning the qna-mode/story-mode "provider had a problem" response
-    (Requirement 11) those endpoints are supposed to give. complete()
-    itself is left as-is (and still used directly by /api/ping, which
-    wants its own distinct 504/502 codes) - this wrapper is for the
-    classifier/answer/story callers that just want one LLMError shape at
-    their existing try/except call sites."""
+    module, is what qna_endpoint.py uses in production, which only
+    catches LLMError. Without this, a slow provider response would 500
+    the whole request instead of returning the qna-mode "provider had a
+    problem" response (Requirement 11) that endpoint is supposed to
+    give. complete() itself is left as-is (and still used directly by
+    /api/ping, which wants its own distinct 504/502 codes) - this
+    wrapper is for the classifier/answer callers that just want one
+    LLMError shape at their existing try/except call sites."""
     try:
         return complete(provider, api_key, system, user, model, max_tokens, timeout)
     except httpx.TimeoutException:
