@@ -162,7 +162,7 @@ def hybrid_search(
     bm25_index: dict,
     openai_client,
     supabase_client,
-    k: int = 12,
+    k: int = 20,
 ) -> tuple[list[dict], bool]:
     """Runs both search paths and merges them by rank. Returns
     (results, meaning_search_degraded) - the second value is True when
