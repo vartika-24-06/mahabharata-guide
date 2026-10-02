@@ -1,21 +1,30 @@
-/* Design tokens. Light mode reads like a kept manuscript page (warm
-   parchment, indigo headings, sindoor-red accent, temple-gold dividers);
-   dark mode shifts the same palette to an indigo night with a warm
-   ember accent, rather than a generic near-black. */
+/* Design tokens, second pass. The first pass's "kept manuscript page"
+   idea (parchment + sindoor-red + temple-gold) was sound in concept but
+   landed, by coincidence of exact hues, on one of the most common
+   AI-generated design defaults: a pale cream background with a
+   terracotta/clay accent. Same throughline, deliberately different
+   execution: an aged palm-leaf ground (olive-tan, not pale cream) with
+   true indigo ink headings and a true vermillion (sindoor) accent kept
+   rare - used only for the one call-to-action color, not borders and
+   dividers everywhere. Dark mode is a night sky rather than a generic
+   near-black: deep cosmic indigo with warm starlight-gold headings,
+   referencing the Gita's cosmic-vision moment rather than just
+   inverting the light palette. */
 :root {
-  --bg: #efe3c3;
-  --bg-raised: #faf3de;
-  --ink: #332a1c;
-  --ink-muted: #6b5f47;
-  --ink-heading: #223059;
-  --accent: #a23b23;
-  --accent-hover: #832d19;
-  --gold: #a87c32;
-  --border: #d6c093;
-  --focus: #223059;
+  --bg: #d9cd98;
+  --bg-raised: #ece2b8;
+  --ink: #241f14;
+  --ink-muted: #675c3c;
+  --ink-heading: #1f2440;
+  --accent: #b23a2e;
+  --accent-hover: #8f2c22;
+  --gold: #8a6a28;
+  --border: #b7a564;
+  --focus: #1f2440;
 
-  --font-display: "Marcellus", "Iowan Old Style", Georgia, serif;
-  --font-body: "Lora", "Iowan Old Style", Georgia, serif;
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-body: "Source Serif 4", "Iowan Old Style", Georgia, serif;
+  --font-devanagari: "Noto Serif Devanagari", "Iowan Old Style", Georgia, serif;
 
   color-scheme: light dark;
   font-family: var(--font-body);
@@ -29,43 +38,43 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #161a30;
-    --bg-raised: #1f2440;
-    --ink: #e7dec4;
-    --ink-muted: #a89a79;
-    --ink-heading: #ecc87a;
-    --accent: #e0794f;
-    --accent-hover: #f08d62;
+    --bg: #10122a;
+    --bg-raised: #181b3a;
+    --ink: #e9e3cf;
+    --ink-muted: #9b96ad;
+    --ink-heading: #e0b464;
+    --accent: #d9623f;
+    --accent-hover: #e8774f;
     --gold: #d1a454;
-    --border: #333a5e;
-    --focus: #ecc87a;
+    --border: #2c2f52;
+    --focus: #e0b464;
   }
 }
 
 :root[data-theme="light"] {
-  --bg: #efe3c3;
-  --bg-raised: #faf3de;
-  --ink: #332a1c;
-  --ink-muted: #6b5f47;
-  --ink-heading: #223059;
-  --accent: #a23b23;
-  --accent-hover: #832d19;
-  --gold: #a87c32;
-  --border: #d6c093;
-  --focus: #223059;
+  --bg: #d9cd98;
+  --bg-raised: #ece2b8;
+  --ink: #241f14;
+  --ink-muted: #675c3c;
+  --ink-heading: #1f2440;
+  --accent: #b23a2e;
+  --accent-hover: #8f2c22;
+  --gold: #8a6a28;
+  --border: #b7a564;
+  --focus: #1f2440;
 }
 
 :root[data-theme="dark"] {
-  --bg: #161a30;
-  --bg-raised: #1f2440;
-  --ink: #e7dec4;
-  --ink-muted: #a89a79;
-  --ink-heading: #ecc87a;
-  --accent: #e0794f;
-  --accent-hover: #f08d62;
+  --bg: #10122a;
+  --bg-raised: #181b3a;
+  --ink: #e9e3cf;
+  --ink-muted: #9b96ad;
+  --ink-heading: #e0b464;
+  --accent: #d9623f;
+  --accent-hover: #e8774f;
   --gold: #d1a454;
-  --border: #333a5e;
-  --focus: #ecc87a;
+  --border: #2c2f52;
+  --focus: #e0b464;
 }
 
 * {

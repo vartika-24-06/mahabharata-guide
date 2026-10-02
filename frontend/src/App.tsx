@@ -33,7 +33,12 @@ function AppShell({ runRequest }: { runRequest: RunRequest | null }) {
   return (
     <div className="app">
       <header className="site-header">
-        <h1>The Mahabharata Guide</h1>
+        <div className="site-title">
+          <span className="site-title-devanagari" lang="hi" aria-hidden="true">
+            महाभारत
+          </span>
+          <h1>The Mahabharata Guide</h1>
+        </div>
         <KeyStatusElement serverWakeState={serverWakeState} />
       </header>
 
