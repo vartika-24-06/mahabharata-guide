@@ -61,6 +61,9 @@ function AppShell({ runRequest }: { runRequest: RunRequest | null }) {
       </p>
 
       <KeyStatusElement serverWakeState={serverWakeState} />
+      <p className="provider-disclaimer">
+        <em>Answers run on whichever API key you've added, so quality and occasional mistakes vary by provider.</em>
+      </p>
 
       {howItWorksOpen && <HowItWorksModal onClose={() => setHowItWorksOpen(false)} />}
 

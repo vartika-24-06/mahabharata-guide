@@ -99,14 +99,21 @@
   gap: 0.6rem;
   font-size: 0.78rem;
   color: var(--ink-muted);
-  margin: 0 0 1.75rem;
-  padding-bottom: 1.25rem;
-  border-bottom: 1px solid var(--border);
+  margin: 0 0 0.5rem;
 }
 
 .key-status .waking {
   color: var(--accent);
   font-style: italic;
+}
+
+.provider-disclaimer {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  max-width: none;
+  margin: 0 0 1.75rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
 }
 
 /* ---- Buttons & inputs ---- */
@@ -365,16 +372,19 @@ select:focus {
 }
 
 .feedback-buttons button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: 1px solid transparent;
-  padding: 0.15rem 0.4rem;
-  font-size: 1rem;
-  line-height: 1;
+  padding: 0.3rem;
+  color: var(--ink-muted);
 }
 
 .feedback-buttons button:hover:not(:disabled) {
   background: var(--bg-raised);
   border-color: var(--border);
+  color: var(--accent);
 }
 
 .feedback-thanks {
