@@ -43,6 +43,7 @@ import answer
 import classifier
 import guardrails
 import llm_client
+import query_rewrite
 import rate_limit
 import scope
 import search
@@ -90,6 +91,32 @@ def _citation_lists(label: str, raw: dict, passages: list[dict]):
         "citations": citations,
     }
     return bool(citations), fields
+
+
+def _retry_with_rewritten_query(
+    body: AskRequest, provider_key: str, question: str, resources: dict,
+):
+    """qna-mode Requirement 9's "checked again" moment, extended one
+    step: when the first pass finds nothing citable, ask the visitor's
+    own model for retrieval keywords in the source's own period
+    vocabulary (query_rewrite.py) and retry hybrid_search once with
+    those, rather than giving up immediately on a modern-phrasing-vs-
+    archaic-translation vocabulary mismatch (docs/decision-log.md).
+
+    Only called from the no-citations branch, never on every request -
+    it's one extra LLM call, paid only on the subset of questions that
+    would otherwise fail outright. Returns (None, None) if the rewrite
+    itself fails or comes back empty, so callers can fall through to
+    the original no_answer result rather than crash."""
+    rewritten = query_rewrite.rewrite_query(body.provider, provider_key, question, body.model)
+    if not rewritten:
+        return None, None
+    return search.hybrid_search(
+        query=rewritten,
+        bm25_index=resources["bm25_index"],
+        openai_client=resources["openai_client"],
+        supabase_client=resources["supabase_client"],
+    )
 
 
 async def handle_ask(request: Request, body: AskRequest, resources: dict) -> JSONResponse:
@@ -152,6 +179,24 @@ async def handle_ask(request: Request, body: AskRequest, resources: dict) -> JSO
             return _error(400, e.kind, str(e))
 
         citations = answer.build_citations(raw.get("used_ids"), passages)
+        query_rewritten = False
+        if not citations:
+            retry_passages, retry_degraded = _retry_with_rewritten_query(
+                body, provider_key, question, resources
+            )
+            if retry_passages is not None:
+                try:
+                    retry_raw = answer.write_full_answer(
+                        body.provider, provider_key, question, label, retry_passages, body.model
+                    )
+                except llm_client.LLMError:
+                    retry_raw = {}
+                retry_citations = answer.build_citations(retry_raw.get("used_ids"), retry_passages)
+                if retry_citations:
+                    raw, passages, degraded = retry_raw, retry_passages, retry_degraded
+                    citations = retry_citations
+                    query_rewritten = True
+
         if not citations:
             suggestions = answer.suggest_related_topics(passages)
             return JSONResponse({
@@ -165,6 +210,7 @@ async def handle_ask(request: Request, body: AskRequest, resources: dict) -> JSO
             "answer": raw.get("answer", ""),
             "citations": citations,
             "meaning_search_degraded": degraded,
+            "query_rewritten": query_rewritten,
         })
 
     # --- Short-answer path (qna-mode Requirements 2-6) ---
@@ -182,11 +228,33 @@ async def handle_ask(request: Request, body: AskRequest, resources: dict) -> JSO
         return _error(400, e.kind, str(e))
 
     has_citations, fields = _citation_lists(label, raw, passages)
+    query_rewritten = False
+    if not has_citations:
+        # qna-mode Requirement 9's "checked again" moment - now extended
+        # with one retry: ask the visitor's own model for retrieval
+        # keywords in the source's own period vocabulary and search
+        # again before giving up (docs/decision-log.md).
+        retry_passages, retry_degraded = _retry_with_rewritten_query(
+            body, provider_key, question, resources
+        )
+        if retry_passages is not None:
+            try:
+                retry_raw = answer.write_answer(
+                    body.provider, provider_key, question, label, retry_passages, body.model
+                )
+            except llm_client.LLMError:
+                retry_raw = {}
+            retry_has_citations, retry_fields = _citation_lists(label, retry_raw, retry_passages)
+            if retry_has_citations:
+                has_citations, fields = retry_has_citations, retry_fields
+                passages, degraded = retry_passages, retry_degraded
+                query_rewritten = True
+
     if not has_citations:
         # qna-mode Requirement 9: either the model found nothing usable
         # (raw == {}) or every id it reported was invalid/hallucinated -
         # both mean "don't show this as an answer" (design.md: "checked
-        # again" after dropping citations).
+        # again" after dropping citations) - even after the rewrite retry.
         suggestions = answer.suggest_related_topics(passages)
         return JSONResponse({
             "type": "no_answer",
@@ -196,4 +264,5 @@ async def handle_ask(request: Request, body: AskRequest, resources: dict) -> JSO
 
     fields["meaning_search_degraded"] = degraded
     fields["classifier_confidence"] = classification["confidence"]
+    fields["query_rewritten"] = query_rewritten
     return JSONResponse(fields)

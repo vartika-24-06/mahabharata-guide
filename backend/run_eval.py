@@ -48,6 +48,7 @@ import answer
 import classifier
 import guardrails
 import llm_client
+import query_rewrite
 import scope
 import search
 from test_scope import load_eval_rows, GUARDRAIL_ROWS, FOLLOWUP_ROWS  # noqa: E402
@@ -133,15 +134,49 @@ def run_one(question: str, has_context: bool, provider: str, api_key: str, model
         text = raw.get("answer", "")
 
     if not citations:
+        # Query-rewrite retry (docs/decision-log.md): before giving up,
+        # ask the visitor's own model for retrieval keywords in the
+        # source's own period vocabulary and search again once. Mirrors
+        # qna_endpoint.py's _retry_with_rewritten_query so this eval
+        # measures the SAME behavior production actually has.
+        rewritten = query_rewrite.rewrite_query(provider, api_key, question, model)
+        if rewritten:
+            retry_passages, retry_degraded = search.hybrid_search(
+                query=rewritten,
+                bm25_index=resources["bm25_index"],
+                openai_client=resources["openai_client"],
+                supabase_client=resources["supabase_client"],
+            )
+            try:
+                retry_raw = answer.write_answer(provider, api_key, question, label, retry_passages, model)
+            except llm_client.LLMError:
+                retry_raw = {}
+            if label == "ambiguous":
+                retry_citations = answer.build_citations(retry_raw.get("factual_ids"), retry_passages) + \
+                    answer.build_citations(retry_raw.get("philosophical_ids"), retry_passages)
+                retry_text = (f"F: {retry_raw.get('factual_sentence', '')} | "
+                              f"P: {retry_raw.get('philosophical_sentence', '')}")
+            else:
+                retry_citations = answer.build_citations(retry_raw.get("used_ids"), retry_passages)
+                retry_text = retry_raw.get("answer", "")
+            if retry_citations:
+                return {"actual": label, "message": retry_text, "degraded": retry_degraded,
+                        "confidence": classification["confidence"], "query_rewritten": True,
+                        "rewritten_query": rewritten}
         # Diagnostic detail for a no_answer outcome: was retrieval itself
         # empty/thin (num_passages), or did search find passages but the
         # model's used_ids came back empty/invalid (raw_model_output)?
         # Those are two different problems to chase - the confusion table
-        # alone can't tell them apart.
+        # alone can't tell them apart. rewritten_query is None when the
+        # rewrite call itself failed/came back empty, vs. a string when
+        # it ran but still didn't find a usable passage - also worth
+        # telling apart by eye.
         return {"actual": "no_answer", "reason": "no_citations", "message": text, "degraded": degraded,
-                "confidence": classification["confidence"], "num_passages": len(passages), "raw_model_output": raw}
+                "confidence": classification["confidence"], "num_passages": len(passages), "raw_model_output": raw,
+                "rewritten_query": rewritten}
 
-    return {"actual": label, "message": text, "degraded": degraded, "confidence": classification["confidence"]}
+    return {"actual": label, "message": text, "degraded": degraded, "confidence": classification["confidence"],
+            "query_rewritten": False}
 
 
 def main():
@@ -205,8 +240,9 @@ def main():
         match = actual == expected_norm
         confusion[expected][actual] += 1
         degraded_note = "  [degraded]" if result.get("degraded") else ""
+        rewrite_note = "  [fixed by query rewrite]" if result.get("query_rewritten") else ""
         print(f"#{row_num:2} [{expected:13}] {query!r}\n"
-              f"       -> {actual}{degraded_note}{'  OK' if match else '  MISMATCH'}")
+              f"       -> {actual}{degraded_note}{rewrite_note}{'  OK' if match else '  MISMATCH'}")
 
         if not match:
             mismatches.append((row_num, query, expected, actual))
@@ -216,8 +252,13 @@ def main():
                 # nothing worth citing (num_passages low/0) vs. retrieval
                 # finding passages but the model's used_ids coming back
                 # empty or invalid (raw_model_output shows what it said).
+                # rewritten_query shows what the retry tried (None if the
+                # rewrite call itself failed/came back empty) - so a
+                # still-failing row is visibly "retry attempted, still no
+                # recall" vs. "retry never even ran."
                 print(f"       [diagnostic] {result.get('num_passages', 0)} passages retrieved; "
-                      f"model output: {result.get('raw_model_output')!r}")
+                      f"model output: {result.get('raw_model_output')!r}; "
+                      f"rewrite tried: {result.get('rewritten_query')!r}")
             elif "confidence" in result:
                 # A wrong-label mismatch (e.g. classifier said "factual"
                 # where the eval set expects "ambiguous") - print the
