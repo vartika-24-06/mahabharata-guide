@@ -52,8 +52,10 @@ export function HowItWorksModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <p className="disclosure">
-          Answers run on whichever API key you've added, so quality and occasional mistakes vary
-          by provider.
+          <em>
+            Answers run on whichever API key you've added, so quality and occasional mistakes vary
+            by provider.
+          </em>
         </p>
 
         <div className="modal-actions">

@@ -41,7 +41,14 @@ function AppShell({ runRequest }: { runRequest: RunRequest | null }) {
           </span>
           <h1>The Mahabharata Guide</h1>
         </div>
-        <KeyStatusElement serverWakeState={serverWakeState} />
+        <nav className="header-links">
+          <button type="button" className="link-button" onClick={() => setHowItWorksOpen(true)}>
+            How this works
+          </button>
+          <a href="https://github.com/vartika-24-06/mahabharata-guide" target="_blank" rel="noreferrer">
+            View the code
+          </a>
+        </nav>
       </header>
 
       <p className="about-brief">
@@ -50,19 +57,10 @@ function AppShell({ runRequest }: { runRequest: RunRequest | null }) {
         <a href="https://archive.sacred-texts.com/hin/maha/index.htm" target="_blank" rel="noreferrer">
           read the original
         </a>
-        ) - with citations back to the passages it's drawn from.{" "}
-        <button type="button" className="link-button" onClick={() => setHowItWorksOpen(true)}>
-          How this works
-        </button>{" "}
-        ·{" "}
-        <a
-          href="https://github.com/vartika-24-06/mahabharata-guide"
-          target="_blank"
-          rel="noreferrer"
-        >
-          View the code
-        </a>
+        ) - with citations back to the passages it's drawn from.
       </p>
+
+      <KeyStatusElement serverWakeState={serverWakeState} />
 
       {howItWorksOpen && <HowItWorksModal onClose={() => setHowItWorksOpen(false)} />}
 

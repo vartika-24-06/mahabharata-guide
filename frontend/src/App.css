@@ -35,6 +35,24 @@
   font-size: 1.5rem;
 }
 
+.header-links {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  font-size: 0.85rem;
+}
+
+.header-links a {
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+}
+
+.header-links a:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
 /* ---- About brief: one quiet line of context beneath the header,
    not a hero - the question box is still the first thing anyone acts
    on. ---- */
@@ -78,9 +96,12 @@
 .key-status {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  font-size: 0.85rem;
+  gap: 0.6rem;
+  font-size: 0.78rem;
   color: var(--ink-muted);
+  margin: 0 0 1.75rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .key-status .waking {
@@ -243,6 +264,16 @@ select:focus {
 
 .qna-screen input {
   flex: 1;
+  font-size: 0.95rem;
+}
+
+/* The question box is the first thing anyone acts on, but its
+   placeholder shouldn't read as a headline competing with it - smaller
+   and quieter than typed text, not the same weight. */
+.qna-screen input::placeholder {
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  font-weight: 400;
 }
 
 /* ---- Example prompts: shown only while the Q&A input is empty and
@@ -263,22 +294,21 @@ select:focus {
   margin: 0 0 0.4rem;
 }
 
-/* Deliberately quieter than every other button on the page - a
-   suggestion to tap, not a call to action competing with Ask. No fill,
-   no pill shape, smaller text, and it only picks up color on hover. */
+/* Chips, not full buttons - a suggestion to tap, not a call to action
+   competing with Ask. Smaller text and a lighter fill than .btn-primary
+   keep them a clear step down, even though they're shaped like tiles. */
 .example-prompts button {
-  background: transparent;
-  border: 1px solid transparent;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
   color: var(--ink-muted);
-  padding: 0.25rem 0.6rem;
-  border-radius: 3px;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
   font-size: 0.8rem;
   text-align: left;
 }
 
 .example-prompts button:hover:not(:disabled) {
-  background: var(--bg-raised);
-  border-color: var(--border);
+  border-color: var(--accent);
   color: var(--ink);
 }
 
