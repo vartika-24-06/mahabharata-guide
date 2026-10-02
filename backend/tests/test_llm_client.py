@@ -152,3 +152,37 @@ def test_complete_safe_passes_through_on_success():
     mock_response.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
     with patch("llm_client.httpx.post", return_value=mock_response):
         assert llm_client.complete_safe("openai", "k", "sys", "user") == "ok"
+
+
+def test_gemini_json_mode_sets_response_mime_type():
+    """The actual fix for the Gemini no_answer bug found via a live eval
+    run (docs/decision-log.md): classifier.py/answer.py ask Gemini for
+    JSON purely by prompt instruction, which it doesn't reliably follow
+    - most of those failures were extract_json() silently failing on
+    non-JSON text, not real retrieval misses. json_mode=True must set
+    Gemini's native responseMimeType so the API enforces valid JSON
+    instead of hoping the model complies."""
+    mock_resp = _mock_response(200, {"candidates": [{"content": {"parts": [{"text": "{}"}]}}]})
+    with patch("httpx.post", return_value=mock_resp) as mock_post:
+        llm_client.complete("gemini", "key", "sys", "hello", json_mode=True)
+        sent_json = mock_post.call_args.kwargs["json"]
+        assert sent_json["generationConfig"]["responseMimeType"] == "application/json"
+
+
+def test_gemini_without_json_mode_omits_response_mime_type():
+    """/api/ping's validation call expects plain text, not JSON, and
+    must not set this - verifies the default (json_mode=False) leaves
+    Gemini's plain-text behavior unchanged."""
+    mock_resp = _mock_response(200, {"candidates": [{"content": {"parts": [{"text": "pong"}]}}]})
+    with patch("httpx.post", return_value=mock_resp) as mock_post:
+        llm_client.complete("gemini", "key", "sys", "hello")
+        sent_json = mock_post.call_args.kwargs["json"]
+        assert "responseMimeType" not in sent_json["generationConfig"]
+
+
+def test_openai_json_mode_sets_response_format():
+    mock_resp = _mock_response(200, {"choices": [{"message": {"content": "{}"}}]})
+    with patch("httpx.post", return_value=mock_resp) as mock_post:
+        llm_client.complete("openai", "key", "sys", "hello", json_mode=True)
+        sent_json = mock_post.call_args.kwargs["json"]
+        assert sent_json["response_format"] == {"type": "json_object"}

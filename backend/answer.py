@@ -101,6 +101,7 @@ def write_full_answer(
         user=user_prompt,
         model=model,
         max_tokens=900,
+        json_mode=True,
     )
 
     try:
@@ -140,6 +141,7 @@ def write_answer(
         user=user_prompt,
         model=model,
         max_tokens=500,
+        json_mode=True,
     )
 
     try:

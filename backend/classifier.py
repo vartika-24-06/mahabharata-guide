@@ -53,6 +53,7 @@ def classify_question(
         user=question,
         model=model,
         max_tokens=50,
+        json_mode=True,
     )
 
     try:

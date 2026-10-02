@@ -29,18 +29,22 @@ class LLMError(Exception):
         super().__init__(message)
 
 
-def _call_openai(api_key: str, model: str, system: str, user: str, max_tokens: int, timeout: float) -> str:
+def _call_openai(api_key: str, model: str, system: str, user: str, max_tokens: int,
+                  timeout: float, json_mode: bool = False) -> str:
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        "max_completion_tokens": max_tokens,
+    }
+    if json_mode:
+        payload["response_format"] = {"type": "json_object"}
     response = httpx.post(
         "https://api.openai.com/v1/chat/completions",
         headers={"Authorization": f"Bearer {api_key}"},
-        json={
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            "max_completion_tokens": max_tokens,
-        },
+        json=payload,
         timeout=timeout,
     )
     if response.status_code == 401:
@@ -55,7 +59,13 @@ def _call_openai(api_key: str, model: str, system: str, user: str, max_tokens: i
     return response.json()["choices"][0]["message"]["content"]
 
 
-def _call_anthropic(api_key: str, model: str, system: str, user: str, max_tokens: int, timeout: float) -> str:
+def _call_anthropic(api_key: str, model: str, system: str, user: str, max_tokens: int,
+                     timeout: float, json_mode: bool = False) -> str:
+    # Anthropic's Messages API has no equivalent response-format switch
+    # (unlike OpenAI's response_format or Gemini's responseMimeType) -
+    # json_mode is accepted for signature uniformity across providers
+    # but has nothing to do here; Claude is relied on via prompting
+    # alone, same as before this parameter existed.
     response = httpx.post(
         "https://api.anthropic.com/v1/messages",
         headers={
@@ -82,14 +92,30 @@ def _call_anthropic(api_key: str, model: str, system: str, user: str, max_tokens
     return response.json()["content"][0]["text"]
 
 
-def _call_gemini(api_key: str, model: str, system: str, user: str, max_tokens: int, timeout: float) -> str:
+def _call_gemini(api_key: str, model: str, system: str, user: str, max_tokens: int,
+                  timeout: float, json_mode: bool = False) -> str:
+    generation_config = {"maxOutputTokens": max_tokens}
+    if json_mode:
+        # Found via a live eval run: Gemini doesn't reliably follow a
+        # prompt-only "respond with ONLY a JSON object" instruction the
+        # way gpt-4o-mini does - most of its classifier/answer-writer
+        # failures weren't retrieval misses at all, they were
+        # llm_client.extract_json() silently failing on non-JSON (or
+        # truncated-JSON) text, which write_answer()/write_full_answer()
+        # then treat as "nothing usable". This is the real fix: make
+        # Gemini emit valid JSON at the API level instead of hoping the
+        # model complies, for every call site that actually parses the
+        # response as JSON (classifier.py, answer.py) - NOT for
+        # ping_endpoint.py's validation call, which expects plain text
+        # and passes json_mode=False (the default) via complete().
+        generation_config["responseMimeType"] = "application/json"
     response = httpx.post(
         f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
         headers={"x-goog-api-key": api_key},
         json={
             "system_instruction": {"parts": [{"text": system}]},
             "contents": [{"parts": [{"text": user}]}],
-            "generationConfig": {"maxOutputTokens": max_tokens},
+            "generationConfig": generation_config,
         },
         timeout=timeout,
     )
@@ -122,7 +148,7 @@ _PROVIDER_FUNCS = {
 
 def complete(provider: str, api_key: str, system: str, user: str,
              model: str | None = None, max_tokens: int = 800,
-             timeout: float = 30) -> str:
+             timeout: float = 30, json_mode: bool = False) -> str:
     """Calls the visitor's chosen provider with their own key. Raises
     LLMError (kind: auth/unknown_model/rate_limit/other) on failure -
     callers should catch this and show the visitor a plain message,
@@ -133,17 +159,25 @@ def complete(provider: str, api_key: str, system: str, user: str,
     (entry-screen's /api/ping) catch httpx.TimeoutException /
     httpx.RequestError themselves. timeout defaults to 30s (Q&A answers
     can be slower); /api/ping passes 10s per the entry-screen spec's own
-    validation timeout."""
+    validation timeout.
+
+    json_mode: pass True when the caller is going to parse the response
+    as JSON (classifier.py, answer.py) - this enables each provider's
+    native structured-output mode where one exists (OpenAI's
+    response_format, Gemini's responseMimeType) instead of relying
+    purely on a prompt instruction, which Gemini in particular doesn't
+    reliably follow (see _call_gemini). Leave False (the default) for a
+    plain-text call like /api/ping's validation ping."""
     if provider not in _PROVIDER_FUNCS:
         raise LLMError("other", f"Unknown provider '{provider}'. "
                         f"Expected one of: {', '.join(_PROVIDER_FUNCS)}.")
     model = model or DEFAULT_MODELS[provider]
-    return _PROVIDER_FUNCS[provider](api_key, model, system, user, max_tokens, timeout)
+    return _PROVIDER_FUNCS[provider](api_key, model, system, user, max_tokens, timeout, json_mode)
 
 
 def complete_safe(provider: str, api_key: str, system: str, user: str,
                    model: str | None = None, max_tokens: int = 800,
-                   timeout: float = 30) -> str:
+                   timeout: float = 30, json_mode: bool = False) -> str:
     """Same contract as complete(), but also normalizes a raw httpx
     timeout/connection failure into LLMError (kind "other") instead of
     letting it propagate uncaught.
@@ -160,7 +194,7 @@ def complete_safe(provider: str, api_key: str, system: str, user: str,
     wrapper is for the classifier/answer callers that just want one
     LLMError shape at their existing try/except call sites."""
     try:
-        return complete(provider, api_key, system, user, model, max_tokens, timeout)
+        return complete(provider, api_key, system, user, model, max_tokens, timeout, json_mode)
     except httpx.TimeoutException:
         raise LLMError("other", "The provider timed out before responding. Please try again.")
     except httpx.RequestError as exc:
